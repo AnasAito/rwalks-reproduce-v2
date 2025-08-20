@@ -69,7 +69,7 @@ Run experiments using the `specificity.py` script with your dataset and chosen s
 python experiments/specificity.py --data_src_path /path/to/your/data/sift_1m_old_dist.h5 --search_mode <method>
 ```
 
-### Example Commands
+### Methods supported
 
 ```bash
 # Test with RWalks method
@@ -91,9 +91,9 @@ python experiments/specificity.py --data_src_path /data/anas.aitaomar/sift_1m_ol
 Each experiment will:
 
 1. **Load the dataset** from your specified `.h5` file
-2. **Build search indices** (for non-ACORN methods) or prepare ACORN data structures
+2. **Build search indices** 
 3. **Run queries** across multiple specificity levels (0.01, 0.05, 0.1, 0.2, 0.3, 0.5)
-4. **Test various EF values** (10-500 for most methods, 10-50 for HNSW)
+4. **Test various EF values** (10-500 for most methods, 10-50 for HNSW-Inline as it saturates)
 5. **Measure performance** (queries per second, recall)
 6. **Save results** to `data/specificity_experiment_{dataset}_{method}.csv`
 
@@ -115,13 +115,9 @@ The visualization script will:
 - **Generate QPS vs Recall plots** for each specificity level
 - **Show Pareto frontiers** comparing different methods
 - **Save plots** to `data/qps_vs_recall_pareto_{dataset}.png`
+You will get a plot similar to this:
 
-### Customization Options
-
-```bash
-# Basic plot generation
-python experiments/specificity_plot.py --data_src_path /path/to/data.h5
-```
+![Example Plot](data/qps_vs_recall_pareto_sift_1m_old_dist.png)
 
 ## 🔍 Search Methods
 
@@ -129,7 +125,7 @@ python experiments/specificity_plot.py --data_src_path /path/to/data.h5
 
 | Method | Description |
 |--------|-------------|
-| `rwalks` | Ours |
+| `rwalks` | Random Walks method (our approach) |
 | `hnsw-inline` | HNSW Baseline |
 | `stf` | Search then Filter Method |
 | `acorn-1` | ACORN (γ=1) |
@@ -139,11 +135,13 @@ python experiments/specificity_plot.py --data_src_path /path/to/data.h5
 
 ### Environment Variables
 
-You can customize experiments by setting environment variables:
+You can customize experiments by setting environment variables.
+
+**Note**: Make sure to choose a thread count appropriate for your machine. 
 
 ```bash
 # Threading
-export NUM_THREADS=48
+export NUM_THREADS=32
 
 # RWalks (and baselines using HNSW) parameters
 export RWALKS_EF_CONSTRUCTION=100
@@ -155,4 +153,8 @@ export ACORN_GAMMA=10
 export ACORN_M=16
 export ACORN_MB=32
 ```
+### Hardware Requirements
+
+- Experiments with 1M dataset were tested on a machine with 16GB RAM
+- Experiments with 10M dataset were tested on a Linux machine with 128GB RAM
 
