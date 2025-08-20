@@ -1,0 +1,19 @@
+Start time: 04:24
+run_acorn.sh: line 61: ./build/demos/test_acorn: cannot execute binary file: Exec format error
+Start time: 04:26
+Warning: Could not open .env file. Using environment variables or defaults.
+====================
+START: running TEST_ACORN for hnsw, sift data --80cores
+
+N: 1000000
+gamma: 1
+dataset: ../../data/acorn_data
+M: 16
+M_beta: 12
+[0.003 s] Loaded metadata, 1000000 attr's found
+[0.003 s] Index Params -- d: 128, M: 16, N: 1000000, gamma: 1
+--ACORN index created
+====================Vectors====================
+
+could not oopen /Users/mac/dev/rwalks-reproduce/data/acorn_data/base.fvecs
+No such file or directory

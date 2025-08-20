@@ -1,0 +1,2418 @@
+Start time: 04:12
+/home/anas.aitaomar/rwalks-reproduce/acorn/run_acorn.sh: line 60: ./build/demos/test_acorn: cannot execute binary file: Exec format error
+Start time: 04:21
+/home/anas.aitaomar/rwalks-reproduce/acorn/run_acorn.sh: line 61: ./build/demos/test_acorn: cannot execute binary file: Exec format error
+Start time: 04:29
+Warning: Could not open .env file. Using environment variables or defaults.
+====================
+START: running TEST_ACORN for hnsw, sift data --80cores
+
+N: 1000000
+gamma: 1
+dataset: acorn_data
+M: 16
+M_beta: 16
+[0.002 s] Loaded metadata, 1000000 attr's found
+[0.002 s] Index Params -- d: 128, M: 16, N: 1000000, gamma: 1
+--ACORN index created
+====================Vectors====================
+
+[0.002 s] Loading database
+[0.343 s] Loaded base vectors from file: /home/anas.aitaomar/rwalks-reproduce/data/acorn_data/base.fvecs
+data loaded, with dim: 128, nb=1000000
+[0.343 s] Indexing database, size 1000000*128 from max 1000000
+[0.343 s] Adding the vectors to the index
+[21.256 s] Vectors added to hybrid index 
+Hybrid index vectors added1000000
+====================================
+============ ACORN INDEX =============
+====================================
+========= METADATA =======
+	* cumulative max num neighbors per level
+		indx 0: 0
+		indx 1: 40
+		indx 2: 56
+		indx 3: 72
+		indx 4: 88
+		indx 5: 104
+		indx 6: 120
+		indx 7: 136
+	* level probabilities
+		level 0: 0.937500
+		level 1: 0.058594
+		level 2: 0.003662
+		level 3: 0.000229
+		level 4: 0.000014
+		level 5: 0.000001
+		level 6: 0.000000
+		level 7: 0.000000
+	* efConstruction: 16
+	* efSearch: 10
+	* max_level: 5
+	* entry_point: 118295
+	* gamma: 1
+========= LEVEL STATS OF ACORN =======
+========= LEVEL 0 =======
+* stats on level 0, max 40 neighbors per vertex:
+   1. nb of nodes: 1000000
+   2. neighbors per node: 20.39 (20388969)
+   3. nb of reciprocal neighbors: 10.72
+   4. nb of neighbors that are also neighbor-of-neighbors: 16.84 (16843350)
+========= LEVEL 1 =======
+* stats on level 1, max 16 neighbors per vertex:
+   1. nb of nodes: 62403
+   2. neighbors per node: 16.00 (998434)
+   3. nb of reciprocal neighbors: 1.58
+   4. nb of neighbors that are also neighbor-of-neighbors: 13.03 (813295)
+========= LEVEL 2 =======
+* stats on level 2, max 16 neighbors per vertex:
+   1. nb of nodes: 3903
+   2. neighbors per node: 15.93 (62190)
+   3. nb of reciprocal neighbors: 6.82
+   4. nb of neighbors that are also neighbor-of-neighbors: 9.35 (36479)
+========= LEVEL 3 =======
+* stats on level 3, max 16 neighbors per vertex:
+   1. nb of nodes: 210
+   2. neighbors per node: 15.63 (3282)
+   3. nb of reciprocal neighbors: 7.25
+   4. nb of neighbors that are also neighbor-of-neighbors: 11.66 (2449)
+========= LEVEL 4 =======
+* stats on level 4, max 16 neighbors per vertex:
+   1. nb of nodes: 16
+   2. neighbors per node: 14.25 (228)
+   3. nb of reciprocal neighbors: 12.56
+   4. nb of neighbors that are also neighbor-of-neighbors: 13.25 (212)
+========= LEVEL 5 =======
+* stats on level 5, max 16 neighbors per vertex:
+   1. nb of nodes: 1
+   2. neighbors per node: 0.00 (0)
+   3. nb of reciprocal neighbors: 0.00
+   4. nb of neighbors that are also neighbor-of-neighbors: 0.00 (0)
+METADATA VEC for number nodes per level
+	level 0: 999169 nodes
+	level 1: 62325 nodes
+	level 2: 3894 nodes
+	level 3: 210 nodes
+	level 4: 16 nodes
+	level 5: 1 nodes
+	level 6: 0 nodes
+	level 7: 0 nodes
+Size of index 4.92483e-06 GBs
+==============================================
+====================Search Results====================
+==============================================
+==============================================
+====================Search====================
+==============================================
+==================== ACORN INDEX ====================
+[23.680 s] Searching the 10 nearest neighbors of 10 vectors in the index, efsearch 1755257372
+ number of queries = 1667
+ spec_id = 0
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_0.bin
+Bin map creation: 1.103796
+query with ef= 10
+[24.835 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[24.835 s] *** Query time: 0.050196
+[24.835 s] *** Query QPS: 33209.862247
+query with ef= 20
+[24.909 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[24.909 s] *** Query time: 0.074278
+[24.909 s] *** Query QPS: 22442.752125
+query with ef= 30
+[25.014 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.014 s] *** Query time: 0.104183
+[25.014 s] *** Query QPS: 16000.697450
+query with ef= 40
+[25.149 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.149 s] *** Query time: 0.135319
+[25.149 s] *** Query QPS: 12319.039215
+query with ef= 45
+[25.315 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.315 s] *** Query time: 0.165333
+[25.315 s] *** Query QPS: 10082.679630
+query with ef= 50
+[25.479 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.480 s] *** Query time: 0.163891
+[25.480 s] *** Query QPS: 10171.389621
+query with ef= 55
+[25.655 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.655 s] *** Query time: 0.175119
+[25.655 s] *** Query QPS: 9519.245377
+query with ef= 60
+[25.844 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.844 s] *** Query time: 0.188521
+[25.844 s] *** Query QPS: 8842.520517
+query with ef= 70
+[26.258 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[26.259 s] *** Query time: 0.413593
+[26.259 s] *** Query QPS: 4030.531907
+query with ef= 80
+[26.534 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[26.535 s] *** Query time: 0.275801
+[26.535 s] *** Query QPS: 6044.214279
+query with ef= 90
+[26.899 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[26.899 s] *** Query time: 0.364112
+[26.899 s] *** Query QPS: 4578.259889
+query with ef= 120
+[27.412 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[27.412 s] *** Query time: 0.512260
+[27.412 s] *** Query QPS: 3254.207101
+query with ef= 130
+[27.955 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[27.955 s] *** Query time: 0.542458
+[27.955 s] *** Query QPS: 3073.048648
+query with ef= 140
+[28.361 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[28.361 s] *** Query time: 0.406009
+[28.361 s] *** Query QPS: 4105.818320
+query with ef= 200
+[28.915 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[28.915 s] *** Query time: 0.553527
+[28.915 s] *** Query QPS: 3011.595908
+query with ef= 300
+[30.008 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[30.008 s] *** Query time: 1.092280
+[30.008 s] *** Query QPS: 1526.165576
+query with ef= 400
+[31.073 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[31.073 s] *** Query time: 1.064393
+[31.073 s] *** Query QPS: 1566.150784
+query with ef= 600
+[32.547 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[32.548 s] *** Query time: 1.474572
+[32.548 s] *** Query QPS: 1130.497571
+query with ef= 900
+[34.677 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[34.678 s] *** Query time: 2.129777
+[34.678 s] *** Query QPS: 782.711070
+query with ef= 1200
+[37.483 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[37.484 s] *** Query time: 2.805514
+[37.484 s] *** Query QPS: 594.187049
+query with ef= 1500
+[40.996 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[40.996 s] *** Query time: 3.512025
+[40.996 s] *** Query QPS: 474.654952
+query with ef= 2000
+[45.783 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[45.783 s] *** Query time: 4.786743
+[45.783 s] *** Query QPS: 348.253505
+finished hybrid index examples
+-------------------------------
+ number of queries = 1667
+ spec_id = 1
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_1.bin
+Bin map creation: 1.171389
+query with ef= 10
+[47.127 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[47.127 s] *** Query time: 0.101935
+[47.127 s] *** Query QPS: 16353.573108
+query with ef= 20
+[47.426 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[47.426 s] *** Query time: 0.298843
+[47.426 s] *** Query QPS: 5578.181584
+query with ef= 30
+[47.565 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[47.565 s] *** Query time: 0.138397
+[47.565 s] *** Query QPS: 12045.060662
+query with ef= 40
+[47.738 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[47.738 s] *** Query time: 0.173055
+[47.738 s] *** Query QPS: 9632.779406
+query with ef= 45
+[47.929 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[47.930 s] *** Query time: 0.190906
+[47.930 s] *** Query QPS: 8732.043951
+query with ef= 50
+[48.343 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[48.343 s] *** Query time: 0.412980
+[48.343 s] *** Query QPS: 4036.514307
+query with ef= 55
+[48.573 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[48.573 s] *** Query time: 0.229319
+[48.573 s] *** Query QPS: 7269.346652
+query with ef= 60
+[48.814 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[48.814 s] *** Query time: 0.240670
+[48.814 s] *** Query QPS: 6926.497849
+query with ef= 70
+[49.109 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.109 s] *** Query time: 0.295102
+[49.109 s] *** Query QPS: 5648.891994
+query with ef= 80
+[49.426 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.427 s] *** Query time: 0.316926
+[49.427 s] *** Query QPS: 5259.902901
+query with ef= 90
+[49.778 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.778 s] *** Query time: 0.350958
+[49.778 s] *** Query QPS: 4749.854634
+query with ef= 120
+[50.342 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[50.343 s] *** Query time: 0.564382
+[50.343 s] *** Query QPS: 2953.674070
+query with ef= 130
+[51.007 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[51.007 s] *** Query time: 0.664187
+[51.007 s] *** Query QPS: 2509.835504
+query with ef= 140
+[51.579 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[51.579 s] *** Query time: 0.571630
+[51.579 s] *** Query QPS: 2916.222026
+query with ef= 200
+[52.274 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[52.275 s] *** Query time: 0.694916
+[52.275 s] *** Query QPS: 2398.851050
+query with ef= 300
+[53.248 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[53.249 s] *** Query time: 0.973867
+[53.249 s] *** Query QPS: 1711.732817
+query with ef= 400
+[54.510 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[54.510 s] *** Query time: 1.261077
+[54.510 s] *** Query QPS: 1321.886052
+query with ef= 600
+[56.344 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[56.344 s] *** Query time: 1.833521
+[56.344 s] *** Query QPS: 909.179715
+query with ef= 900
+[59.036 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[59.036 s] *** Query time: 2.691543
+[59.036 s] *** Query QPS: 619.347372
+query with ef= 1200
+[62.488 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[62.489 s] *** Query time: 3.452384
+[62.489 s] *** Query QPS: 482.854747
+query with ef= 1500
+[66.897 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[66.897 s] *** Query time: 4.408199
+[66.897 s] *** Query QPS: 378.158986
+query with ef= 2000
+[72.821 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[72.821 s] *** Query time: 5.923700
+[72.821 s] *** Query QPS: 281.411951
+finished hybrid index examples
+-------------------------------
+ number of queries = 1667
+ spec_id = 2
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_2.bin
+Bin map creation: 1.127007
+query with ef= 10
+[74.124 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[74.124 s] *** Query time: 0.107220
+[74.124 s] *** Query QPS: 15547.481990
+query with ef= 20
+[74.246 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[74.247 s] *** Query time: 0.122088
+[74.247 s] *** Query QPS: 13654.090557
+query with ef= 30
+[74.413 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[74.413 s] *** Query time: 0.166010
+[74.413 s] *** Query QPS: 10041.569631
+query with ef= 40
+[74.623 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[74.624 s] *** Query time: 0.210275
+[74.624 s] *** Query QPS: 7927.707179
+query with ef= 45
+[74.868 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[74.868 s] *** Query time: 0.243775
+[74.868 s] *** Query QPS: 6838.269370
+query with ef= 50
+[75.111 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[75.111 s] *** Query time: 0.242506
+[75.111 s] *** Query QPS: 6874.055953
+query with ef= 55
+[75.396 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[75.396 s] *** Query time: 0.284620
+[75.396 s] *** Query QPS: 5856.931090
+query with ef= 60
+[75.674 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[75.674 s] *** Query time: 0.278218
+[75.674 s] *** Query QPS: 5991.703681
+query with ef= 70
+[75.986 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[75.986 s] *** Query time: 0.311345
+[75.986 s] *** Query QPS: 5354.191456
+query with ef= 80
+[76.334 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[76.334 s] *** Query time: 0.347590
+[76.334 s] *** Query QPS: 4795.880623
+query with ef= 90
+[76.734 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[76.734 s] *** Query time: 0.399934
+[76.734 s] *** Query QPS: 4168.187194
+query with ef= 120
+[77.242 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[77.242 s] *** Query time: 0.507548
+[77.242 s] *** Query QPS: 3284.417813
+query with ef= 130
+[77.768 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[77.768 s] *** Query time: 0.525878
+[77.768 s] *** Query QPS: 3169.937039
+query with ef= 140
+[78.329 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[78.329 s] *** Query time: 0.560511
+[78.329 s] *** Query QPS: 2974.072543
+query with ef= 200
+[79.094 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[79.094 s] *** Query time: 0.764987
+[79.094 s] *** Query QPS: 2179.122021
+query with ef= 300
+[80.691 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[80.691 s] *** Query time: 1.596243
+[80.691 s] *** Query QPS: 1044.327273
+query with ef= 400
+[82.290 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[82.290 s] *** Query time: 1.598817
+[82.290 s] *** Query QPS: 1042.645990
+query with ef= 600
+[84.262 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[84.262 s] *** Query time: 1.971709
+[84.262 s] *** Query QPS: 845.459441
+query with ef= 900
+[87.255 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[87.256 s] *** Query time: 2.992734
+[87.256 s] *** Query QPS: 557.015767
+query with ef= 1200
+[91.366 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[91.367 s] *** Query time: 4.110958
+[91.367 s] *** Query QPS: 405.501579
+query with ef= 1500
+[96.378 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[96.379 s] *** Query time: 5.011458
+[96.379 s] *** Query QPS: 332.637733
+query with ef= 2000
+[103.080 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[103.081 s] *** Query time: 6.701665
+[103.081 s] *** Query QPS: 248.744149
+finished hybrid index examples
+-------------------------------
+ number of queries = 1667
+ spec_id = 3
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_3.bin
+Bin map creation: 1.144478
+query with ef= 10
+[104.451 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[104.451 s] *** Query time: 0.146795
+[104.451 s] *** Query QPS: 11355.969953
+query with ef= 20
+[104.572 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[104.572 s] *** Query time: 0.120575
+[104.572 s] *** Query QPS: 13825.425462
+query with ef= 30
+[104.727 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[104.727 s] *** Query time: 0.154615
+[104.727 s] *** Query QPS: 10781.624063
+query with ef= 40
+[104.920 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[104.920 s] *** Query time: 0.192936
+[104.920 s] *** Query QPS: 8640.173359
+query with ef= 45
+[105.144 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[105.145 s] *** Query time: 0.224251
+[105.145 s] *** Query QPS: 7433.633576
+query with ef= 50
+[105.382 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[105.383 s] *** Query time: 0.237227
+[105.383 s] *** Query QPS: 7027.025843
+query with ef= 55
+[105.633 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[105.633 s] *** Query time: 0.250262
+[105.633 s] *** Query QPS: 6661.018666
+query with ef= 60
+[105.904 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[105.905 s] *** Query time: 0.271325
+[105.905 s] *** Query QPS: 6143.920817
+query with ef= 70
+[106.214 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[106.214 s] *** Query time: 0.308732
+[106.214 s] *** Query QPS: 5399.504499
+query with ef= 80
+[106.561 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[106.562 s] *** Query time: 0.347238
+[106.562 s] *** Query QPS: 4800.740972
+query with ef= 90
+[106.945 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[106.945 s] *** Query time: 0.383097
+[106.945 s] *** Query QPS: 4351.379128
+query with ef= 120
+[107.431 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[107.431 s] *** Query time: 0.485877
+[107.431 s] *** Query QPS: 3430.909207
+query with ef= 130
+[107.974 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[107.975 s] *** Query time: 0.543138
+[107.975 s] *** Query QPS: 3069.201412
+query with ef= 140
+[108.593 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[108.593 s] *** Query time: 0.618270
+[108.593 s] *** Query QPS: 2696.233385
+query with ef= 200
+[109.430 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[109.431 s] *** Query time: 0.836900
+[109.431 s] *** Query QPS: 1991.874786
+query with ef= 300
+[110.591 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[110.591 s] *** Query time: 1.159894
+[110.591 s] *** Query QPS: 1437.200309
+query with ef= 400
+[112.071 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[112.071 s] *** Query time: 1.479980
+[112.071 s] *** Query QPS: 1126.366579
+query with ef= 600
+[114.160 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[114.160 s] *** Query time: 2.088184
+[114.160 s] *** Query QPS: 798.301345
+query with ef= 900
+[117.269 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[117.270 s] *** Query time: 3.109356
+[117.270 s] *** Query QPS: 536.123892
+query with ef= 1200
+[121.519 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[121.520 s] *** Query time: 4.249703
+[121.520 s] *** Query QPS: 392.262713
+query with ef= 1500
+[126.504 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[126.504 s] *** Query time: 4.984104
+[126.504 s] *** Query QPS: 334.463331
+query with ef= 2000
+[133.277 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[133.278 s] *** Query time: 6.772974
+[133.278 s] *** Query QPS: 246.125261
+finished hybrid index examples
+-------------------------------
+ number of queries = 1666
+ spec_id = 4
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_4.bin
+Bin map creation: 1.125739
+query with ef= 10
+[134.536 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[134.537 s] *** Query time: 0.064103
+[134.537 s] *** Query QPS: 25989.371974
+query with ef= 20
+[134.639 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[134.639 s] *** Query time: 0.102193
+[134.639 s] *** Query QPS: 16302.505819
+query with ef= 30
+[134.784 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[134.785 s] *** Query time: 0.145403
+[134.785 s] *** Query QPS: 11457.798798
+query with ef= 40
+[134.972 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[134.972 s] *** Query time: 0.187075
+[134.972 s] *** Query QPS: 8905.512603
+query with ef= 45
+[135.180 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[135.180 s] *** Query time: 0.207576
+[135.180 s] *** Query QPS: 8025.974619
+query with ef= 50
+[135.436 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[135.436 s] *** Query time: 0.255635
+[135.436 s] *** Query QPS: 6517.103876
+query with ef= 55
+[135.685 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[135.685 s] *** Query time: 0.248734
+[135.685 s] *** Query QPS: 6697.918330
+query with ef= 60
+[136.227 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[136.227 s] *** Query time: 0.541531
+[136.227 s] *** Query QPS: 3076.462355
+query with ef= 70
+[136.614 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[136.614 s] *** Query time: 0.386816
+[136.614 s] *** Query QPS: 4306.957037
+query with ef= 80
+[137.000 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[137.001 s] *** Query time: 0.386215
+[137.001 s] *** Query QPS: 4313.657145
+query with ef= 90
+[137.420 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[137.421 s] *** Query time: 0.419588
+[137.421 s] *** Query QPS: 3970.563013
+query with ef= 120
+[137.914 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[137.915 s] *** Query time: 0.493493
+[137.915 s] *** Query QPS: 3375.933862
+query with ef= 130
+[138.440 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[138.441 s] *** Query time: 0.525653
+[138.441 s] *** Query QPS: 3169.390468
+query with ef= 140
+[139.004 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[139.004 s] *** Query time: 0.562943
+[139.004 s] *** Query QPS: 2959.447145
+query with ef= 200
+[139.790 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[139.790 s] *** Query time: 0.785543
+[139.790 s] *** Query QPS: 2120.826071
+query with ef= 300
+[140.894 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[140.894 s] *** Query time: 1.103935
+[140.894 s] *** Query QPS: 1509.146820
+query with ef= 400
+[142.337 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[142.337 s] *** Query time: 1.442632
+[142.337 s] *** Query QPS: 1154.833697
+query with ef= 600
+[144.400 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[144.401 s] *** Query time: 2.062998
+[144.401 s] *** Query QPS: 807.562657
+query with ef= 900
+[147.428 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[147.428 s] *** Query time: 3.027012
+[147.428 s] *** Query QPS: 550.377756
+query with ef= 1200
+[151.653 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[151.653 s] *** Query time: 4.224693
+[151.653 s] *** Query QPS: 394.348175
+query with ef= 1500
+[156.638 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[156.638 s] *** Query time: 4.984738
+[156.638 s] *** Query QPS: 334.220166
+query with ef= 2000
+[163.336 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[163.337 s] *** Query time: 6.698121
+[163.337 s] *** Query QPS: 248.726469
+finished hybrid index examples
+-------------------------------
+ number of queries = 1666
+ spec_id = 5
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_5.bin
+Bin map creation: 1.124653
+query with ef= 10
+[164.601 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[164.601 s] *** Query time: 0.060665
+[164.601 s] *** Query QPS: 27462.341721
+query with ef= 20
+[164.695 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[164.695 s] *** Query time: 0.093855
+[164.695 s] *** Query QPS: 17750.803910
+query with ef= 30
+[164.828 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[164.829 s] *** Query time: 0.132903
+[164.829 s] *** Query QPS: 12535.448848
+query with ef= 40
+[164.998 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[164.999 s] *** Query time: 0.169788
+[164.999 s] *** Query QPS: 9812.243154
+query with ef= 45
+[165.186 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[165.186 s] *** Query time: 0.186952
+[165.186 s] *** Query QPS: 8911.384247
+query with ef= 50
+[165.392 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[165.392 s] *** Query time: 0.205190
+[165.392 s] *** Query QPS: 8119.306303
+query with ef= 55
+[165.614 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[165.614 s] *** Query time: 0.221913
+[165.614 s] *** Query QPS: 7507.451319
+query with ef= 60
+[165.853 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[165.853 s] *** Query time: 0.238079
+[165.853 s] *** Query QPS: 6997.675153
+query with ef= 70
+[166.127 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[166.128 s] *** Query time: 0.274102
+[166.128 s] *** Query QPS: 6078.024668
+query with ef= 80
+[166.434 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[166.434 s] *** Query time: 0.306122
+[166.434 s] *** Query QPS: 5442.273500
+query with ef= 90
+[166.775 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[166.775 s] *** Query time: 0.340888
+[166.775 s] *** Query QPS: 4887.235355
+query with ef= 120
+[167.210 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[167.211 s] *** Query time: 0.435299
+[167.211 s] *** Query QPS: 3827.255076
+query with ef= 130
+[167.675 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[167.676 s] *** Query time: 0.464091
+[167.676 s] *** Query QPS: 3589.812721
+query with ef= 140
+[168.174 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[168.175 s] *** Query time: 0.498607
+[168.175 s] *** Query QPS: 3341.309421
+query with ef= 200
+[168.852 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[168.853 s] *** Query time: 0.677561
+[168.853 s] *** Query QPS: 2458.819044
+query with ef= 300
+[169.827 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[169.828 s] *** Query time: 0.974521
+[169.828 s] *** Query QPS: 1709.557961
+query with ef= 400
+[171.077 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[171.078 s] *** Query time: 1.249855
+[171.078 s] *** Query QPS: 1332.954578
+query with ef= 600
+[173.384 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[173.385 s] *** Query time: 2.306522
+[173.385 s] *** Query QPS: 722.299595
+query with ef= 900
+[176.125 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[176.125 s] *** Query time: 2.739868
+[176.125 s] *** Query QPS: 608.058507
+query with ef= 1200
+[179.681 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[179.681 s] *** Query time: 3.555711
+[179.681 s] *** Query QPS: 468.542012
+query with ef= 1500
+[184.277 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[184.278 s] *** Query time: 4.596044
+[184.278 s] *** Query QPS: 362.485646
+query with ef= 2000
+[190.401 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[190.401 s] *** Query time: 6.123207
+[190.401 s] *** Query QPS: 272.079643
+finished hybrid index examples
+-------------------------------
+Saved 132 QPS values to all_qps.bin
+[190.466 s] -----DONE-----
+Start time: 04:39
+Warning: Could not open .env file. Using environment variables or defaults.
+====================
+START: running TEST_ACORN for hnsw, sift data --80cores
+
+N: 1000000
+gamma: 1
+dataset: acorn_data
+M: 16
+M_beta: 16
+[0.003 s] Loaded metadata, 1000000 attr's found
+[0.003 s] Index Params -- d: 128, M: 16, N: 1000000, gamma: 1
+--ACORN index created
+====================Vectors====================
+
+[0.003 s] Loading database
+[0.339 s] Loaded base vectors from file: /home/anas.aitaomar/rwalks-reproduce/data/acorn_data/base.fvecs
+data loaded, with dim: 128, nb=1000000
+[0.339 s] Indexing database, size 1000000*128 from max 1000000
+[0.339 s] Adding the vectors to the index
+[21.342 s] Vectors added to hybrid index 
+Hybrid index vectors added1000000
+====================================
+============ ACORN INDEX =============
+====================================
+========= METADATA =======
+	* cumulative max num neighbors per level
+		indx 0: 0
+		indx 1: 40
+		indx 2: 56
+		indx 3: 72
+		indx 4: 88
+		indx 5: 104
+		indx 6: 120
+		indx 7: 136
+	* level probabilities
+		level 0: 0.937500
+		level 1: 0.058594
+		level 2: 0.003662
+		level 3: 0.000229
+		level 4: 0.000014
+		level 5: 0.000001
+		level 6: 0.000000
+		level 7: 0.000000
+	* efConstruction: 16
+	* efSearch: 10
+	* max_level: 5
+	* entry_point: 118295
+	* gamma: 1
+========= LEVEL STATS OF ACORN =======
+========= LEVEL 0 =======
+* stats on level 0, max 40 neighbors per vertex:
+   1. nb of nodes: 1000000
+   2. neighbors per node: 20.40 (20396234)
+   3. nb of reciprocal neighbors: 10.73
+   4. nb of neighbors that are also neighbor-of-neighbors: 16.83 (16834556)
+========= LEVEL 1 =======
+* stats on level 1, max 16 neighbors per vertex:
+   1. nb of nodes: 62403
+   2. neighbors per node: 16.00 (998448)
+   3. nb of reciprocal neighbors: 1.51
+   4. nb of neighbors that are also neighbor-of-neighbors: 12.99 (810691)
+========= LEVEL 2 =======
+* stats on level 2, max 16 neighbors per vertex:
+   1. nb of nodes: 3903
+   2. neighbors per node: 15.93 (62162)
+   3. nb of reciprocal neighbors: 6.65
+   4. nb of neighbors that are also neighbor-of-neighbors: 9.63 (37590)
+========= LEVEL 3 =======
+* stats on level 3, max 16 neighbors per vertex:
+   1. nb of nodes: 210
+   2. neighbors per node: 15.61 (3278)
+   3. nb of reciprocal neighbors: 7.29
+   4. nb of neighbors that are also neighbor-of-neighbors: 11.17 (2346)
+========= LEVEL 4 =======
+* stats on level 4, max 16 neighbors per vertex:
+   1. nb of nodes: 16
+   2. neighbors per node: 14.25 (228)
+   3. nb of reciprocal neighbors: 12.56
+   4. nb of neighbors that are also neighbor-of-neighbors: 13.56 (217)
+========= LEVEL 5 =======
+* stats on level 5, max 16 neighbors per vertex:
+   1. nb of nodes: 1
+   2. neighbors per node: 0.00 (0)
+   3. nb of reciprocal neighbors: 0.00
+   4. nb of neighbors that are also neighbor-of-neighbors: 0.00 (0)
+METADATA VEC for number nodes per level
+	level 0: 999146 nodes
+	level 1: 62335 nodes
+	level 2: 3900 nodes
+	level 3: 209 nodes
+	level 4: 16 nodes
+	level 5: 1 nodes
+	level 6: 0 nodes
+	level 7: 0 nodes
+Size of index 4.92483e-06 GBs
+==============================================
+====================Search Results====================
+==============================================
+==============================================
+====================Search====================
+==============================================
+==================== ACORN INDEX ====================
+[23.786 s] Searching the 10 nearest neighbors of 10 vectors in the index, efsearch 1755258016
+ number of queries = 1667
+ spec_id = 0
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_0.bin
+Bin map creation: 1.063372
+query with ef= 10
+[24.918 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[24.918 s] *** Query time: 0.067799
+[24.918 s] *** Query QPS: 24587.436633
+query with ef= 20
+[25.006 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.007 s] *** Query time: 0.087860
+[25.007 s] *** Query QPS: 18973.343522
+query with ef= 30
+[25.124 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.125 s] *** Query time: 0.117731
+[25.125 s] *** Query QPS: 14159.414596
+query with ef= 40
+[25.273 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.273 s] *** Query time: 0.148074
+[25.273 s] *** Query QPS: 11257.873160
+query with ef= 45
+[25.441 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.441 s] *** Query time: 0.167532
+[25.441 s] *** Query QPS: 9950.339796
+query with ef= 50
+[25.610 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.611 s] *** Query time: 0.168721
+[25.611 s] *** Query QPS: 9880.204797
+query with ef= 55
+[25.795 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.796 s] *** Query time: 0.184787
+[25.796 s] *** Query QPS: 9021.195670
+query with ef= 60
+[25.996 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.996 s] *** Query time: 0.199786
+[25.996 s] *** Query QPS: 8343.930183
+query with ef= 70
+[26.226 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[26.227 s] *** Query time: 0.230059
+[26.227 s] *** Query QPS: 7245.962713
+query with ef= 80
+[26.487 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[26.488 s] *** Query time: 0.259810
+[26.488 s] *** Query QPS: 6416.227963
+query with ef= 90
+[26.775 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[26.776 s] *** Query time: 0.287897
+[26.776 s] *** Query QPS: 5790.263056
+query with ef= 120
+[27.153 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[27.154 s] *** Query time: 0.376937
+[27.154 s] *** Query QPS: 4422.490726
+query with ef= 130
+[27.555 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[27.555 s] *** Query time: 0.401208
+[27.555 s] *** Query QPS: 4154.952833
+query with ef= 140
+[27.985 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[27.985 s] *** Query time: 0.429311
+[27.985 s] *** Query QPS: 3882.965627
+query with ef= 200
+[28.582 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[28.583 s] *** Query time: 0.597310
+[28.583 s] *** Query QPS: 2790.845315
+query with ef= 300
+[29.417 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[29.417 s] *** Query time: 0.833632
+[29.417 s] *** Query QPS: 1999.683332
+query with ef= 400
+[30.482 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[30.483 s] *** Query time: 1.064955
+[30.483 s] *** Query QPS: 1565.324362
+query with ef= 600
+[31.979 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[31.979 s] *** Query time: 1.495820
+[31.979 s] *** Query QPS: 1114.438869
+query with ef= 900
+[34.135 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[34.135 s] *** Query time: 2.155467
+[34.135 s] *** Query QPS: 773.382276
+query with ef= 1200
+[37.391 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[37.392 s] *** Query time: 3.255794
+[37.392 s] *** Query QPS: 512.010273
+query with ef= 1500
+[41.022 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[41.023 s] *** Query time: 3.630284
+[41.023 s] *** Query QPS: 459.192715
+query with ef= 2000
+[45.672 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[45.672 s] *** Query time: 4.649225
+[45.672 s] *** Query QPS: 358.554383
+finished hybrid index examples
+-------------------------------
+ number of queries = 1667
+ spec_id = 1
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_1.bin
+Bin map creation: 1.045263
+query with ef= 10
+[46.861 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[46.861 s] *** Query time: 0.069819
+[46.861 s] *** Query QPS: 23875.949802
+query with ef= 20
+[46.969 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[46.970 s] *** Query time: 0.108436
+[46.970 s] *** Query QPS: 15373.141858
+query with ef= 30
+[47.121 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[47.122 s] *** Query time: 0.151433
+[47.122 s] *** Query QPS: 11008.169281
+query with ef= 40
+[47.312 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[47.313 s] *** Query time: 0.190780
+[47.313 s] *** Query QPS: 8737.816651
+query with ef= 45
+[47.524 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[47.524 s] *** Query time: 0.210463
+[47.524 s] *** Query QPS: 7920.630360
+query with ef= 50
+[47.754 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[47.755 s] *** Query time: 0.230125
+[47.755 s] *** Query QPS: 7243.890752
+query with ef= 55
+[48.005 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[48.006 s] *** Query time: 0.249664
+[48.006 s] *** Query QPS: 6676.972028
+query with ef= 60
+[48.275 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[48.275 s] *** Query time: 0.268876
+[48.275 s] *** Query QPS: 6199.887712
+query with ef= 70
+[48.582 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[48.583 s] *** Query time: 0.306688
+[48.583 s] *** Query QPS: 5435.490198
+query with ef= 80
+[48.926 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[48.927 s] *** Query time: 0.343544
+[48.927 s] *** Query QPS: 4852.362344
+query with ef= 90
+[49.306 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.306 s] *** Query time: 0.378679
+[49.306 s] *** Query QPS: 4402.144921
+query with ef= 120
+[49.791 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.791 s] *** Query time: 0.484836
+[49.791 s] *** Query QPS: 3438.275316
+query with ef= 130
+[50.309 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[50.310 s] *** Query time: 0.517471
+[50.310 s] *** Query QPS: 3221.436096
+query with ef= 140
+[50.861 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[50.861 s] *** Query time: 0.551112
+[50.861 s] *** Query QPS: 3024.793857
+query with ef= 200
+[51.604 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[51.605 s] *** Query time: 0.742899
+[51.605 s] *** Query QPS: 2243.912204
+query with ef= 300
+[52.644 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[52.644 s] *** Query time: 1.038596
+[52.644 s] *** Query QPS: 1605.051566
+query with ef= 400
+[54.388 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[54.389 s] *** Query time: 1.743652
+[54.389 s] *** Query QPS: 956.039335
+query with ef= 600
+[56.272 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[56.273 s] *** Query time: 1.883517
+[56.273 s] *** Query QPS: 885.046419
+query with ef= 900
+[58.839 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[58.839 s] *** Query time: 2.565839
+[58.839 s] *** Query QPS: 649.690071
+query with ef= 1200
+[62.219 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[62.219 s] *** Query time: 3.378982
+[62.219 s] *** Query QPS: 493.343843
+query with ef= 1500
+[66.464 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[66.465 s] *** Query time: 4.245056
+[66.465 s] *** Query QPS: 392.692119
+query with ef= 2000
+[72.228 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[72.229 s] *** Query time: 5.763094
+[72.229 s] *** Query QPS: 289.254351
+finished hybrid index examples
+-------------------------------
+ number of queries = 1667
+ spec_id = 2
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_2.bin
+Bin map creation: 1.145950
+query with ef= 10
+[73.544 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[73.544 s] *** Query time: 0.096662
+[73.544 s] *** Query QPS: 17245.652192
+query with ef= 20
+[73.666 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[73.666 s] *** Query time: 0.121736
+[73.666 s] *** Query QPS: 13693.587640
+query with ef= 30
+[73.836 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[73.837 s] *** Query time: 0.170040
+[73.837 s] *** Query QPS: 9803.581845
+query with ef= 40
+[74.076 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[74.076 s] *** Query time: 0.238648
+[74.076 s] *** Query QPS: 6985.178042
+query with ef= 45
+[74.322 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[74.323 s] *** Query time: 0.246214
+[74.323 s] *** Query QPS: 6770.528788
+query with ef= 50
+[74.581 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[74.582 s] *** Query time: 0.258725
+[74.582 s] *** Query QPS: 6443.136398
+query with ef= 55
+[74.861 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[74.861 s] *** Query time: 0.278567
+[74.861 s] *** Query QPS: 5984.196071
+query with ef= 60
+[75.160 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[75.161 s] *** Query time: 0.298663
+[75.161 s] *** Query QPS: 5581.543589
+query with ef= 70
+[75.500 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[75.501 s] *** Query time: 0.339643
+[75.501 s] *** Query QPS: 4908.094653
+query with ef= 80
+[75.896 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[75.896 s] *** Query time: 0.394593
+[75.896 s] *** Query QPS: 4224.606109
+query with ef= 90
+[76.344 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[76.345 s] *** Query time: 0.447350
+[76.345 s] *** Query QPS: 3726.388524
+query with ef= 120
+[76.876 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[76.877 s] *** Query time: 0.531766
+[76.877 s] *** Query QPS: 3134.837870
+query with ef= 130
+[77.446 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[77.447 s] *** Query time: 0.569193
+[77.447 s] *** Query QPS: 2928.707195
+query with ef= 140
+[78.051 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[78.051 s] *** Query time: 0.603918
+[78.051 s] *** Query QPS: 2760.309263
+query with ef= 200
+[78.860 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[78.860 s] *** Query time: 0.808311
+[78.860 s] *** Query QPS: 2062.325058
+query with ef= 300
+[80.015 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[80.016 s] *** Query time: 1.154665
+[80.016 s] *** Query QPS: 1443.708790
+query with ef= 400
+[81.453 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[81.454 s] *** Query time: 1.437343
+[81.454 s] *** Query QPS: 1159.778745
+query with ef= 600
+[83.506 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[83.507 s] *** Query time: 2.052261
+[83.507 s] *** Query QPS: 812.274807
+query with ef= 900
+[86.438 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[86.439 s] *** Query time: 2.931308
+[86.439 s] *** Query QPS: 568.688102
+query with ef= 1200
+[90.263 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[90.263 s] *** Query time: 3.823945
+[90.263 s] *** Query QPS: 435.937254
+query with ef= 1500
+[94.912 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[94.912 s] *** Query time: 4.648383
+[94.912 s] *** Query QPS: 358.619320
+query with ef= 2000
+[101.732 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[101.732 s] *** Query time: 6.819162
+[101.732 s] *** Query QPS: 244.458194
+finished hybrid index examples
+-------------------------------
+ number of queries = 1667
+ spec_id = 3
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_3.bin
+Bin map creation: 1.057983
+query with ef= 10
+[102.937 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[102.938 s] *** Query time: 0.071557
+[102.938 s] *** Query QPS: 23296.098943
+query with ef= 20
+[103.050 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[103.050 s] *** Query time: 0.112009
+[103.050 s] *** Query QPS: 14882.726198
+query with ef= 30
+[103.207 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[103.208 s] *** Query time: 0.156890
+[103.208 s] *** Query QPS: 10625.268436
+query with ef= 40
+[103.406 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[103.407 s] *** Query time: 0.198488
+[103.407 s] *** Query QPS: 8398.492729
+query with ef= 45
+[103.625 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[103.626 s] *** Query time: 0.218232
+[103.626 s] *** Query QPS: 7638.662700
+query with ef= 50
+[103.867 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[103.867 s] *** Query time: 0.241330
+[103.867 s] *** Query QPS: 6907.556594
+query with ef= 55
+[104.161 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[104.161 s] *** Query time: 0.293273
+[104.161 s] *** Query QPS: 5684.124207
+query with ef= 60
+[104.473 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[104.473 s] *** Query time: 0.311548
+[104.473 s] *** Query QPS: 5350.700466
+query with ef= 70
+[104.842 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[104.842 s] *** Query time: 0.368535
+[104.842 s] *** Query QPS: 4523.314776
+query with ef= 80
+[105.226 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[105.226 s] *** Query time: 0.383406
+[105.226 s] *** Query QPS: 4347.869607
+query with ef= 90
+[105.657 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[105.657 s] *** Query time: 0.430379
+[105.657 s] *** Query QPS: 3873.331026
+query with ef= 120
+[106.198 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[106.199 s] *** Query time: 0.540761
+[106.199 s] *** Query QPS: 3082.692758
+query with ef= 130
+[106.782 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[106.783 s] *** Query time: 0.583607
+[106.783 s] *** Query QPS: 2856.374442
+query with ef= 140
+[107.345 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[107.346 s] *** Query time: 0.562030
+[107.346 s] *** Query QPS: 2966.033435
+query with ef= 200
+[108.147 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[108.148 s] *** Query time: 0.801415
+[108.148 s] *** Query QPS: 2080.070343
+query with ef= 300
+[109.276 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[109.277 s] *** Query time: 1.128397
+[109.277 s] *** Query QPS: 1477.316953
+query with ef= 400
+[110.716 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[110.717 s] *** Query time: 1.439038
+[110.717 s] *** Query QPS: 1158.412742
+query with ef= 600
+[112.766 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[112.767 s] *** Query time: 2.049742
+[112.767 s] *** Query QPS: 813.273092
+query with ef= 900
+[115.724 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[115.725 s] *** Query time: 2.956832
+[115.725 s] *** Query QPS: 563.779085
+query with ef= 1200
+[120.162 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[120.162 s] *** Query time: 4.436630
+[120.162 s] *** Query QPS: 375.735636
+query with ef= 1500
+[124.939 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[124.940 s] *** Query time: 4.776811
+[124.940 s] *** Query QPS: 348.977600
+query with ef= 2000
+[131.536 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[131.537 s] *** Query time: 6.596536
+[131.537 s] *** Query QPS: 252.708394
+finished hybrid index examples
+-------------------------------
+ number of queries = 1666
+ spec_id = 4
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_4.bin
+Bin map creation: 1.059364
+query with ef= 10
+[132.739 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[132.739 s] *** Query time: 0.067029
+[132.739 s] *** Query QPS: 24854.913794
+query with ef= 20
+[132.844 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[132.845 s] *** Query time: 0.104823
+[132.845 s] *** Query QPS: 15893.477591
+query with ef= 30
+[132.992 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[132.993 s] *** Query time: 0.147752
+[132.993 s] *** Query QPS: 11275.647536
+query with ef= 40
+[133.181 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[133.182 s] *** Query time: 0.187643
+[133.182 s] *** Query QPS: 8878.570811
+query with ef= 45
+[133.389 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[133.389 s] *** Query time: 0.207148
+[133.389 s] *** Query QPS: 8042.556027
+query with ef= 50
+[133.616 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[133.616 s] *** Query time: 0.226332
+[133.616 s] *** Query QPS: 7360.869756
+query with ef= 55
+[133.862 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[133.863 s] *** Query time: 0.245915
+[133.863 s] *** Query QPS: 6774.693768
+query with ef= 60
+[134.128 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[134.129 s] *** Query time: 0.265570
+[134.129 s] *** Query QPS: 6273.300706
+query with ef= 70
+[134.431 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[134.432 s] *** Query time: 0.302433
+[134.432 s] *** Query QPS: 5508.657863
+query with ef= 80
+[134.769 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[134.770 s] *** Query time: 0.337916
+[134.770 s] *** Query QPS: 4930.217363
+query with ef= 90
+[135.143 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[135.144 s] *** Query time: 0.373393
+[135.144 s] *** Query QPS: 4461.786208
+query with ef= 120
+[135.622 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[135.623 s] *** Query time: 0.478542
+[135.623 s] *** Query QPS: 3481.409194
+query with ef= 130
+[136.136 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[136.137 s] *** Query time: 0.513386
+[136.137 s] *** Query QPS: 3245.121534
+query with ef= 140
+[136.689 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[136.689 s] *** Query time: 0.551575
+[136.689 s] *** Query QPS: 3020.441762
+query with ef= 200
+[137.440 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[137.440 s] *** Query time: 0.750487
+[137.440 s] *** Query QPS: 2219.891620
+query with ef= 300
+[138.510 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[138.511 s] *** Query time: 1.069541
+[138.511 s] *** Query QPS: 1557.677579
+query with ef= 400
+[139.895 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[139.896 s] *** Query time: 1.384037
+[139.896 s] *** Query QPS: 1203.725029
+query with ef= 600
+[141.971 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[141.972 s] *** Query time: 2.075733
+[141.972 s] *** Query QPS: 802.608063
+query with ef= 900
+[144.967 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[144.967 s] *** Query time: 2.995120
+[144.967 s] *** Query QPS: 556.238183
+query with ef= 1200
+[148.895 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[148.895 s] *** Query time: 3.927688
+[148.895 s] *** Query QPS: 424.168124
+query with ef= 1500
+[154.011 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[154.012 s] *** Query time: 5.115607
+[154.012 s] *** Query QPS: 325.670051
+query with ef= 2000
+[160.892 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[160.893 s] *** Query time: 6.880433
+[160.893 s] *** Query QPS: 242.135929
+finished hybrid index examples
+-------------------------------
+ number of queries = 1666
+ spec_id = 5
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_5.bin
+Bin map creation: 1.074058
+query with ef= 10
+[162.108 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[162.109 s] *** Query time: 0.064799
+[162.109 s] *** Query QPS: 25710.245391
+query with ef= 20
+[162.209 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[162.210 s] *** Query time: 0.100695
+[162.210 s] *** Query QPS: 16544.990278
+query with ef= 30
+[162.353 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[162.354 s] *** Query time: 0.143042
+[162.354 s] *** Query QPS: 11646.921745
+query with ef= 40
+[162.537 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[162.538 s] *** Query time: 0.183585
+[162.538 s] *** Query QPS: 9074.819014
+query with ef= 45
+[162.740 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[162.741 s] *** Query time: 0.202308
+[162.741 s] *** Query QPS: 8234.961221
+query with ef= 50
+[162.962 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[162.963 s] *** Query time: 0.221426
+[162.963 s] *** Query QPS: 7523.957998
+query with ef= 55
+[163.209 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[163.210 s] *** Query time: 0.246324
+[163.210 s] *** Query QPS: 6763.448053
+query with ef= 60
+[163.473 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[163.474 s] *** Query time: 0.262960
+[163.474 s] *** Query QPS: 6335.565377
+query with ef= 70
+[164.139 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[164.140 s] *** Query time: 0.665800
+[164.140 s] *** Query QPS: 2502.252573
+query with ef= 80
+[164.990 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[164.991 s] *** Query time: 0.850265
+[164.991 s] *** Query QPS: 1959.389071
+query with ef= 90
+[165.361 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[165.361 s] *** Query time: 0.369533
+[165.361 s] *** Query QPS: 4508.392270
+query with ef= 120
+[165.805 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[165.806 s] *** Query time: 0.444064
+[165.806 s] *** Query QPS: 3751.710280
+query with ef= 130
+[166.281 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[166.282 s] *** Query time: 0.475257
+[166.282 s] *** Query QPS: 3505.470609
+query with ef= 140
+[166.790 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[166.790 s] *** Query time: 0.507755
+[166.790 s] *** Query QPS: 3281.109718
+query with ef= 200
+[167.484 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[167.485 s] *** Query time: 0.694366
+[167.485 s] *** Query QPS: 2399.311101
+query with ef= 300
+[168.478 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[168.479 s] *** Query time: 0.993073
+[168.479 s] *** Query QPS: 1677.620902
+query with ef= 400
+[169.762 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[169.763 s] *** Query time: 1.283131
+[169.763 s] *** Query QPS: 1298.386642
+query with ef= 600
+[171.610 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[171.611 s] *** Query time: 1.847176
+[171.611 s] *** Query QPS: 901.917269
+query with ef= 900
+[174.339 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[174.340 s] *** Query time: 2.728519
+[174.340 s] *** Query QPS: 610.587657
+query with ef= 1200
+[178.088 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[178.089 s] *** Query time: 3.748190
+[178.089 s] *** Query QPS: 444.481183
+query with ef= 1500
+[182.579 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[182.580 s] *** Query time: 4.490011
+[182.580 s] *** Query QPS: 371.045844
+query with ef= 2000
+[188.771 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[188.772 s] *** Query time: 6.191419
+[188.772 s] *** Query QPS: 269.082101
+finished hybrid index examples
+-------------------------------
+Saved 132 QPS values to all_qps.bin
+[188.851 s] -----DONE-----
+Start time: 04:44
+Warning: Could not open .env file. Using environment variables or defaults.
+====================
+START: running TEST_ACORN for hnsw, sift data --80cores
+
+N: 1000000
+gamma: 1
+dataset: acorn_data
+M: 16
+M_beta: 16
+[0.002 s] Loaded metadata, 1000000 attr's found
+[0.002 s] Index Params -- d: 128, M: 16, N: 1000000, gamma: 1
+--ACORN index created
+====================Vectors====================
+
+[0.002 s] Loading database
+[0.359 s] Loaded base vectors from file: /home/anas.aitaomar/rwalks-reproduce/data/acorn_data/base.fvecs
+data loaded, with dim: 128, nb=1000000
+Start time: 04:48
+/home/anas.aitaomar/rwalks-reproduce/acorn/run_acorn.sh: line 61: ./build/demos/test_acorn: No such file or directory
+Start time: 05:36
+Warning: Could not open .env file. Using environment variables or defaults.
+====================
+START: running TEST_ACORN for hnsw, sift data --80cores
+
+N: 1000000
+gamma: 1
+dataset: acorn_data
+M: 32
+M_beta: 16
+[0.003 s] Loaded metadata, 1000000 attr's found
+[0.003 s] Index Params -- d: 128, M: 32, N: 1000000, gamma: 1
+--ACORN index created
+====================Vectors====================
+
+[0.003 s] Loading database
+[0.364 s] Loaded base vectors from file: /home/anas.aitaomar/rwalks-reproduce/data/acorn_data/base.fvecs
+data loaded, with dim: 128, nb=1000000
+[0.364 s] Indexing database, size 1000000*128 from max 1000000
+[0.364 s] Adding the vectors to the index
+[10.155 s] Vectors added to hybrid index 
+Hybrid index vectors added1000000
+====================================
+============ ACORN INDEX =============
+====================================
+========= METADATA =======
+	* cumulative max num neighbors per level
+		indx 0: 0
+		indx 1: 64
+		indx 2: 96
+		indx 3: 128
+		indx 4: 160
+		indx 5: 192
+	* level probabilities
+		level 0: 0.968750
+		level 1: 0.030273
+		level 2: 0.000946
+		level 3: 0.000030
+		level 4: 0.000001
+		level 5: 0.000000
+	* efConstruction: 32
+	* efSearch: 10
+	* max_level: 4
+	* entry_point: 118295
+	* gamma: 1
+========= LEVEL STATS OF ACORN =======
+========= LEVEL 0 =======
+* stats on level 0, max 64 neighbors per vertex:
+   1. nb of nodes: 1000000
+   2. neighbors per node: 27.88 (27881161)
+   3. nb of reciprocal neighbors: 21.77
+   4. nb of neighbors that are also neighbor-of-neighbors: 25.08 (25080867)
+========= LEVEL 1 =======
+* stats on level 1, max 32 neighbors per vertex:
+   1. nb of nodes: 31254
+   2. neighbors per node: 32.00 (1000128)
+   3. nb of reciprocal neighbors: 5.07
+   4. nb of neighbors that are also neighbor-of-neighbors: 26.90 (840759)
+========= LEVEL 2 =======
+* stats on level 2, max 32 neighbors per vertex:
+   1. nb of nodes: 978
+   2. neighbors per node: 31.81 (31115)
+   3. nb of reciprocal neighbors: 15.90
+   4. nb of neighbors that are also neighbor-of-neighbors: 23.00 (22494)
+========= LEVEL 3 =======
+* stats on level 3, max 32 neighbors per vertex:
+   1. nb of nodes: 27
+   2. neighbors per node: 25.33 (684)
+   3. nb of reciprocal neighbors: 23.44
+   4. nb of neighbors that are also neighbor-of-neighbors: 24.48 (661)
+========= LEVEL 4 =======
+* stats on level 4, max 32 neighbors per vertex:
+   1. nb of nodes: 1
+   2. neighbors per node: 0.00 (0)
+   3. nb of reciprocal neighbors: 0.00
+   4. nb of neighbors that are also neighbor-of-neighbors: 0.00 (0)
+METADATA VEC for number nodes per level
+	level 0: 995473 nodes
+	level 1: 31109 nodes
+	level 2: 976 nodes
+	level 3: 27 nodes
+	level 4: 1 nodes
+	level 5: 0 nodes
+Size of index 4.92483e-06 GBs
+==============================================
+====================Search Results====================
+==============================================
+==============================================
+====================Search====================
+==============================================
+==================== ACORN INDEX ====================
+[10.965 s] Searching the 10 nearest neighbors of 10 vectors in the index, efsearch 1755261404
+ number of queries = 1667
+ spec_id = 0
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_0.bin
+Bin map creation: 1.204337
+query with ef= 10
+[12.195 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.196 s] *** Query time: 0.024755
+[12.196 s] *** Query QPS: 67339.928421
+query with ef= 20
+[12.229 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.229 s] *** Query time: 0.033472
+[12.229 s] *** Query QPS: 49802.729272
+query with ef= 30
+[12.275 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.275 s] *** Query time: 0.045545
+[12.275 s] *** Query QPS: 36601.082385
+query with ef= 40
+[12.332 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.333 s] *** Query time: 0.056786
+[12.333 s] *** Query QPS: 29355.919203
+query with ef= 45
+[12.393 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.394 s] *** Query time: 0.060861
+[12.394 s] *** Query QPS: 27390.340261
+query with ef= 50
+[12.459 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.459 s] *** Query time: 0.065148
+[12.459 s] *** Query QPS: 25587.846954
+query with ef= 55
+[12.530 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.530 s] *** Query time: 0.070044
+[12.530 s] *** Query QPS: 23799.312316
+query with ef= 60
+[12.605 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.605 s] *** Query time: 0.074924
+[12.605 s] *** Query QPS: 22249.214864
+query with ef= 70
+[12.690 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.691 s] *** Query time: 0.084713
+[12.691 s] *** Query QPS: 19678.211735
+query with ef= 80
+[12.785 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.785 s] *** Query time: 0.094363
+[12.785 s] *** Query QPS: 17665.827245
+query with ef= 90
+[12.889 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[12.890 s] *** Query time: 0.103791
+[12.890 s] *** Query QPS: 16061.123072
+query with ef= 120
+[13.022 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[13.022 s] *** Query time: 0.132030
+[13.022 s] *** Query QPS: 12625.917374
+query with ef= 130
+[13.163 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[13.164 s] *** Query time: 0.141387
+[13.164 s] *** Query QPS: 11790.335517
+query with ef= 140
+[13.315 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[13.315 s] *** Query time: 0.151020
+[13.315 s] *** Query QPS: 11038.286845
+query with ef= 200
+[13.511 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[13.512 s] *** Query time: 0.195851
+[13.512 s] *** Query QPS: 8511.579129
+query with ef= 300
+[13.784 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[13.785 s] *** Query time: 0.272441
+[13.785 s] *** Query QPS: 6118.758001
+query with ef= 400
+[14.239 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[14.239 s] *** Query time: 0.453811
+[14.239 s] *** Query QPS: 3673.335940
+query with ef= 600
+[14.802 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[14.802 s] *** Query time: 0.562419
+[14.802 s] *** Query QPS: 2963.982697
+query with ef= 900
+[15.577 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[15.578 s] *** Query time: 0.775094
+[15.578 s] *** Query QPS: 2150.706792
+query with ef= 1200
+[16.515 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[16.515 s] *** Query time: 0.936809
+[16.515 s] *** Query QPS: 1779.444783
+query with ef= 1500
+[17.707 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[17.707 s] *** Query time: 1.191470
+[17.707 s] *** Query QPS: 1399.111850
+query with ef= 2000
+[19.275 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[19.275 s] *** Query time: 1.567115
+[19.275 s] *** Query QPS: 1063.738097
+finished hybrid index examples
+-------------------------------
+ number of queries = 1667
+ spec_id = 1
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_1.bin
+Bin map creation: 1.127576
+query with ef= 10
+[20.521 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[20.521 s] *** Query time: 0.031089
+[20.521 s] *** Query QPS: 53620.546397
+query with ef= 20
+[20.564 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[20.565 s] *** Query time: 0.042915
+[20.565 s] *** Query QPS: 38844.131179
+query with ef= 30
+[20.723 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[20.724 s] *** Query time: 0.158190
+[20.724 s] *** Query QPS: 10537.959882
+query with ef= 40
+[20.798 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[20.798 s] *** Query time: 0.073657
+[20.798 s] *** Query QPS: 22631.918068
+query with ef= 45
+[20.921 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[20.922 s] *** Query time: 0.123264
+[20.922 s] *** Query QPS: 13523.810641
+query with ef= 50
+[21.007 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[21.007 s] *** Query time: 0.084531
+[21.007 s] *** Query QPS: 19720.559832
+query with ef= 55
+[21.096 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[21.097 s] *** Query time: 0.088946
+[21.097 s] *** Query QPS: 18741.686528
+query with ef= 60
+[21.192 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[21.193 s] *** Query time: 0.095178
+[21.193 s] *** Query QPS: 17514.528259
+query with ef= 70
+[21.293 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[21.294 s] *** Query time: 0.100344
+[21.294 s] *** Query QPS: 16612.821814
+query with ef= 80
+[21.410 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[21.411 s] *** Query time: 0.116386
+[21.411 s] *** Query QPS: 14323.036328
+query with ef= 90
+[21.539 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[21.539 s] *** Query time: 0.127311
+[21.539 s] *** Query QPS: 13093.920510
+query with ef= 120
+[21.699 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[21.700 s] *** Query time: 0.160141
+[21.700 s] *** Query QPS: 10409.577132
+query with ef= 130
+[21.863 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[21.863 s] *** Query time: 0.163088
+[21.863 s] *** Query QPS: 10221.485246
+query with ef= 140
+[22.042 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[22.043 s] *** Query time: 0.178809
+[22.043 s] *** Query QPS: 9322.800729
+query with ef= 200
+[22.284 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[22.285 s] *** Query time: 0.241762
+[22.285 s] *** Query QPS: 6895.213193
+query with ef= 300
+[22.604 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[22.604 s] *** Query time: 0.318755
+[22.604 s] *** Query QPS: 5229.723340
+query with ef= 400
+[23.034 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[23.035 s] *** Query time: 0.429660
+[23.035 s] *** Query QPS: 3879.813358
+query with ef= 600
+[23.622 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[23.623 s] *** Query time: 0.587796
+[23.623 s] *** Query QPS: 2836.018069
+query with ef= 900
+[24.417 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[24.418 s] *** Query time: 0.793965
+[24.418 s] *** Query QPS: 2099.589136
+query with ef= 1200
+[25.434 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[25.435 s] *** Query time: 1.016225
+[25.435 s] *** Query QPS: 1640.384597
+query with ef= 1500
+[26.637 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[26.637 s] *** Query time: 1.201703
+[26.637 s] *** Query QPS: 1387.198194
+query with ef= 2000
+[28.270 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[28.271 s] *** Query time: 1.633026
+[28.271 s] *** Query QPS: 1020.804246
+finished hybrid index examples
+-------------------------------
+ number of queries = 1667
+ spec_id = 2
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_2.bin
+Bin map creation: 1.104727
+query with ef= 10
+[29.473 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[29.474 s] *** Query time: 0.031049
+[29.474 s] *** Query QPS: 53689.307051
+query with ef= 20
+[29.520 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[29.521 s] *** Query time: 0.046016
+[29.521 s] *** Query QPS: 36226.547333
+query with ef= 30
+[29.580 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[29.581 s] *** Query time: 0.059375
+[29.581 s] *** Query QPS: 28075.766926
+query with ef= 40
+[29.651 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[29.652 s] *** Query time: 0.070530
+[29.652 s] *** Query QPS: 23635.273449
+query with ef= 45
+[29.735 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[29.735 s] *** Query time: 0.082524
+[29.735 s] *** Query QPS: 20200.169208
+query with ef= 50
+[29.825 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[29.825 s] *** Query time: 0.089491
+[29.825 s] *** Query QPS: 18627.594280
+query with ef= 55
+[29.922 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[29.922 s] *** Query time: 0.096358
+[29.922 s] *** Query QPS: 17300.057572
+query with ef= 60
+[30.019 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[30.020 s] *** Query time: 0.096781
+[30.020 s] *** Query QPS: 17224.452473
+query with ef= 70
+[30.136 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[30.137 s] *** Query time: 0.116657
+[30.137 s] *** Query QPS: 14289.753151
+query with ef= 80
+[30.265 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[30.265 s] *** Query time: 0.127818
+[30.265 s] *** Query QPS: 13041.970588
+query with ef= 90
+[30.406 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[30.406 s] *** Query time: 0.140659
+[30.406 s] *** Query QPS: 11851.348920
+query with ef= 120
+[30.573 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[30.573 s] *** Query time: 0.166597
+[30.573 s] *** Query QPS: 10006.189221
+query with ef= 130
+[30.764 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[30.765 s] *** Query time: 0.191294
+[30.765 s] *** Query QPS: 8714.337059
+query with ef= 140
+[30.953 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[30.954 s] *** Query time: 0.188373
+[30.954 s] *** Query QPS: 8849.459391
+query with ef= 200
+[31.213 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[31.214 s] *** Query time: 0.258884
+[31.214 s] *** Query QPS: 6439.178559
+query with ef= 300
+[31.539 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[31.539 s] *** Query time: 0.324729
+[31.539 s] *** Query QPS: 5133.511869
+query with ef= 400
+[31.949 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[31.949 s] *** Query time: 0.409485
+[31.949 s] *** Query QPS: 4070.966179
+query with ef= 600
+[32.525 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[32.525 s] *** Query time: 0.575702
+[32.525 s] *** Query QPS: 2895.595532
+query with ef= 900
+[33.359 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[33.360 s] *** Query time: 0.833932
+[33.360 s] *** Query QPS: 1998.963558
+query with ef= 1200
+[34.439 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[34.439 s] *** Query time: 1.079406
+[34.439 s] *** Query QPS: 1544.367888
+query with ef= 1500
+[36.074 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[36.075 s] *** Query time: 1.635031
+[36.075 s] *** Query QPS: 1019.552544
+query with ef= 2000
+[38.188 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[38.189 s] *** Query time: 2.112908
+[38.189 s] *** Query QPS: 788.960092
+finished hybrid index examples
+-------------------------------
+ number of queries = 1667
+ spec_id = 3
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_3.bin
+Bin map creation: 1.111789
+query with ef= 10
+[39.396 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[39.397 s] *** Query time: 0.027813
+[39.397 s] *** Query QPS: 59936.092168
+query with ef= 20
+[39.437 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[39.437 s] *** Query time: 0.039813
+[39.437 s] *** Query QPS: 41870.701895
+query with ef= 30
+[39.492 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[39.492 s] *** Query time: 0.055067
+[39.492 s] *** Query QPS: 30272.310624
+query with ef= 40
+[39.562 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[39.563 s] *** Query time: 0.069615
+[39.563 s] *** Query QPS: 23946.027440
+query with ef= 45
+[39.639 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[39.639 s] *** Query time: 0.076387
+[39.639 s] *** Query QPS: 21823.037376
+query with ef= 50
+[39.727 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[39.727 s] *** Query time: 0.087119
+[39.727 s] *** Query QPS: 19134.724218
+query with ef= 55
+[39.817 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[39.818 s] *** Query time: 0.090190
+[39.818 s] *** Query QPS: 18483.215700
+query with ef= 60
+[39.915 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[39.915 s] *** Query time: 0.096869
+[39.915 s] *** Query QPS: 17208.809219
+query with ef= 70
+[40.025 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[40.026 s] *** Query time: 0.110427
+[40.026 s] *** Query QPS: 15095.959030
+query with ef= 80
+[40.149 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[40.150 s] *** Query time: 0.123078
+[40.150 s] *** Query QPS: 13544.270858
+query with ef= 90
+[40.286 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[40.286 s] *** Query time: 0.136071
+[40.286 s] *** Query QPS: 12250.960217
+query with ef= 120
+[40.459 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[40.460 s] *** Query time: 0.172908
+[40.460 s] *** Query QPS: 9640.961363
+query with ef= 130
+[40.645 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[40.645 s] *** Query time: 0.184865
+[40.645 s] *** Query QPS: 9017.391173
+query with ef= 140
+[40.841 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[40.842 s] *** Query time: 0.196279
+[40.842 s] *** Query QPS: 8493.010381
+query with ef= 200
+[41.107 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[41.107 s] *** Query time: 0.264744
+[41.107 s] *** Query QPS: 6296.647807
+query with ef= 300
+[41.482 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[41.483 s] *** Query time: 0.374393
+[41.483 s] *** Query QPS: 4452.540675
+query with ef= 400
+[41.968 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[41.969 s] *** Query time: 0.485393
+[41.969 s] *** Query QPS: 3434.330197
+query with ef= 600
+[42.651 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[42.651 s] *** Query time: 0.681747
+[42.651 s] *** Query QPS: 2445.188756
+query with ef= 900
+[43.591 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[43.592 s] *** Query time: 0.939672
+[43.592 s] *** Query QPS: 1774.023289
+query with ef= 1200
+[44.825 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[44.825 s] *** Query time: 1.233063
+[44.826 s] *** Query QPS: 1351.917967
+query with ef= 1500
+[46.243 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[46.244 s] *** Query time: 1.417734
+[46.244 s] *** Query QPS: 1175.820082
+query with ef= 2000
+[48.226 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[48.227 s] *** Query time: 1.982185
+[48.227 s] *** Query QPS: 840.991075
+finished hybrid index examples
+-------------------------------
+ number of queries = 1666
+ spec_id = 4
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_4.bin
+Bin map creation: 1.124315
+query with ef= 10
+[49.464 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.464 s] *** Query time: 0.027523
+[49.464 s] *** Query QPS: 60531.626781
+query with ef= 20
+[49.501 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.502 s] *** Query time: 0.037230
+[49.502 s] *** Query QPS: 44749.127228
+query with ef= 30
+[49.554 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.554 s] *** Query time: 0.052213
+[49.554 s] *** Query QPS: 31907.790810
+query with ef= 40
+[49.724 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.725 s] *** Query time: 0.169905
+[49.725 s] *** Query QPS: 9805.482575
+query with ef= 45
+[49.805 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.806 s] *** Query time: 0.080343
+[49.806 s] *** Query QPS: 20736.091922
+query with ef= 50
+[49.885 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.886 s] *** Query time: 0.079557
+[49.886 s] *** Query QPS: 20940.913083
+query with ef= 55
+[49.972 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[49.972 s] *** Query time: 0.086134
+[49.972 s] *** Query QPS: 19341.911696
+query with ef= 60
+[50.065 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[50.065 s] *** Query time: 0.092305
+[50.065 s] *** Query QPS: 18048.870514
+query with ef= 70
+[50.172 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[50.172 s] *** Query time: 0.106461
+[50.172 s] *** Query QPS: 15648.951051
+query with ef= 80
+[50.290 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[50.291 s] *** Query time: 0.118260
+[50.291 s] *** Query QPS: 14087.614691
+query with ef= 90
+[50.421 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[50.422 s] *** Query time: 0.130672
+[50.422 s] *** Query QPS: 12749.481760
+query with ef= 120
+[50.589 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[50.589 s] *** Query time: 0.167021
+[50.589 s] *** Query QPS: 9974.805669
+query with ef= 130
+[50.760 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[50.760 s] *** Query time: 0.170344
+[50.760 s] *** Query QPS: 9780.216585
+query with ef= 140
+[50.937 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[50.937 s] *** Query time: 0.176608
+[50.937 s] *** Query QPS: 9433.316680
+query with ef= 200
+[51.172 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[51.172 s] *** Query time: 0.234537
+[51.172 s] *** Query QPS: 7103.353052
+query with ef= 300
+[51.574 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[51.575 s] *** Query time: 0.401775
+[51.575 s] *** Query QPS: 4146.600670
+query with ef= 400
+[52.008 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[52.008 s] *** Query time: 0.433088
+[52.008 s] *** Query QPS: 3846.792691
+query with ef= 600
+[52.657 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[52.657 s] *** Query time: 0.648417
+[52.657 s] *** Query QPS: 2569.334256
+query with ef= 900
+[53.618 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[53.619 s] *** Query time: 0.961121
+[53.619 s] *** Query QPS: 1733.392421
+query with ef= 1200
+[54.734 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[54.735 s] *** Query time: 1.115065
+[54.735 s] *** Query QPS: 1494.083174
+query with ef= 1500
+[56.161 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[56.162 s] *** Query time: 1.426557
+[56.162 s] *** Query QPS: 1167.846728
+query with ef= 2000
+[58.044 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[58.045 s] *** Query time: 1.882420
+[58.045 s] *** Query QPS: 885.031053
+finished hybrid index examples
+-------------------------------
+ number of queries = 1666
+ spec_id = 5
+/home/anas.aitaomar/rwalks-reproduce/data/acorn_data/filter_ids_map_5.bin
+Bin map creation: 1.280026
+query with ef= 10
+[59.418 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[59.419 s] *** Query time: 0.022845
+[59.419 s] *** Query QPS: 72926.146839
+query with ef= 20
+[59.450 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[59.450 s] *** Query time: 0.031282
+[59.450 s] *** Query QPS: 53257.552734
+query with ef= 30
+[59.494 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[59.495 s] *** Query time: 0.044035
+[59.495 s] *** Query QPS: 37833.577684
+query with ef= 40
+[59.551 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[59.552 s] *** Query time: 0.056223
+[59.552 s] *** Query QPS: 29631.919938
+query with ef= 45
+[59.614 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[59.614 s] *** Query time: 0.062046
+[59.614 s] *** Query QPS: 26851.023916
+query with ef= 50
+[59.682 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[59.683 s] *** Query time: 0.068147
+[59.683 s] *** Query QPS: 24447.085554
+query with ef= 55
+[59.757 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[59.757 s] *** Query time: 0.073803
+[59.757 s] *** Query QPS: 22573.624024
+query with ef= 60
+[59.836 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[59.837 s] *** Query time: 0.079418
+[59.837 s] *** Query QPS: 20977.626932
+query with ef= 70
+[59.932 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[59.932 s] *** Query time: 0.094750
+[59.932 s] *** Query QPS: 17583.126907
+query with ef= 80
+[60.040 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[60.041 s] *** Query time: 0.107996
+[60.041 s] *** Query QPS: 15426.499143
+query with ef= 90
+[60.156 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[60.157 s] *** Query time: 0.115813
+[60.157 s] *** Query QPS: 14385.256897
+query with ef= 120
+[60.306 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[60.306 s] *** Query time: 0.148823
+[60.306 s] *** Query QPS: 11194.504507
+query with ef= 130
+[60.465 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[60.466 s] *** Query time: 0.159038
+[60.466 s] *** Query QPS: 10475.479442
+query with ef= 140
+[60.645 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[60.646 s] *** Query time: 0.179601
+[60.646 s] *** Query QPS: 9276.119989
+query with ef= 200
+[60.868 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[60.869 s] *** Query time: 0.222292
+[60.869 s] *** Query QPS: 7494.648488
+query with ef= 300
+[61.181 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[61.182 s] *** Query time: 0.312568
+[61.182 s] *** Query QPS: 5330.041048
+query with ef= 400
+[61.607 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[61.607 s] *** Query time: 0.425246
+[61.607 s] *** Query QPS: 3917.732322
+query with ef= 600
+[62.184 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[62.185 s] *** Query time: 0.576863
+[62.185 s] *** Query QPS: 2888.033821
+query with ef= 900
+[63.018 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[63.019 s] *** Query time: 0.832840
+[63.019 s] *** Query QPS: 2000.384310
+query with ef= 1200
+[64.082 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[64.082 s] *** Query time: 1.063140
+[64.082 s] *** Query QPS: 1567.056204
+query with ef= 1500
+[65.385 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[65.386 s] *** Query time: 1.302967
+[65.386 s] *** Query QPS: 1278.620186
+query with ef= 2000
+[67.538 s] Query results (vector ids, then distances):
+flushing neighbors logs to disk ...
+[67.538 s] *** Query time: 2.151627
+[67.538 s] *** Query QPS: 774.297753
+finished hybrid index examples
+-------------------------------
+Saved 132 QPS values to all_qps.bin
+[67.603 s] -----DONE-----
