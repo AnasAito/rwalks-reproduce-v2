@@ -1,9 +1,11 @@
 # RWalks Reproduce: Experimental Comparison of Vector Search Methods
 
+
 This repository contains code to reproduce experimental results comparing different ANN indices across various specificity levels (RWalks, HNSW-inline, STF, ACORN-1 and ACORN-G).
 
-## 📋 Table of Contents
 
+## Table of Contents
+- [Paper Information](#-paper-information)
 - [Data Download](#-data-download)
 - [Installation](#-installation)
 - [Running Experiments](#-running-experiments)
@@ -11,7 +13,16 @@ This repository contains code to reproduce experimental results comparing differ
 - [Search Methods](#-search-methods)
 - [Configuration](#-configuration)
 
-## 📥 Data Download
+## Paper Information
+
+### Title
+RWalks: Random Walks as Attribute Diffusers for Filtered Vector Search
+### Authors
+Anas Ait Aomar, Karima Echihabi, Marco Arnaboldi, Ioannis Alagiannis, Damien Hilloulin, Manal Cherkaoui
+### Abstract
+Analytical tasks in various domains increasingly encode complex information as dense vector data (e.g., embeddings), often requiring filtered vector search (i.e., vector search with attribute filtering). This search is challenging due to the volume and dimensionality of the data, the number and variety of filters, and the difference in distribution and/or update frequency between vectors and filters. Besides, many real applications require answers in a few milliseconds with high recall on large collections. Graph-based methods are considered the best choice for such applications, despite a lack of theoretical guarantees on query accuracy. Existing solutions for filtered vector search are either: 1) ad-hoc, using existing techniques with no or minor modifications; or 2) hybrid, providing specialized indexing and/or search algorithms. We show that neither is satisfactory and propose RWalks, an index-agnostic graph-based filtered vector search method that efficiently supports both filtered and unfiltered vector search. We demonstrate its scalability and robustness against the state-of-the-art with an exhaustive experimental evaluation on four real datasets (up to 100 million vectors), using query workloads with filters of different types (unique/composite), and varied specificity (proportion of points that satisfy a filter). The results show that RWalks can perform filtered search up to 2x faster than the second-best competitor (ACORN), while building the index 76x faster and answering unfiltered search 13x faster.
+
+## Data Download
 
 Before running experiments, you need to download the required datasets:
 
