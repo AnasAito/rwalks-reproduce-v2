@@ -8,6 +8,8 @@
 #include <atomic>
 #include <stdlib.h>
 #include <assert.h>
+#include <iomanip>
+#include <limits>
 
 namespace py = pybind11;
 using namespace pybind11::literals; // needed to bring in _a literal
@@ -301,12 +303,24 @@ public:
             appr_alg->getAttrAggregate(node_id, 50, 50, 0.9f);
         }
     }
-    void addItems(py::object input, py::object input_attr, py::object ids_ = py::none(), int num_threads = -1, bool replace_deleted = false)
+    void addItems(py::object input, py::object input_attr, py::object data_scalar_labels = py::none(), py::object ids_ = py::none(), int num_threads = -1, bool replace_deleted = false)
     {
         // std::cout << "dim_attr" << std::endl;
         // std::cout << dim_attr << std::endl;
         py::array_t<dist_t, py::array::c_style | py::array::forcecast> items(input);
         py::array_t<int, py::array::c_style | py::array::forcecast> items_attr(input_attr);
+        py::array_t<float, py::array::c_style | py::array::forcecast> items_scalar;
+        bool has_scalar_labels = false;
+        if (!data_scalar_labels.is_none())
+        {
+            items_scalar = data_scalar_labels.cast<py::array_t<float, py::array::c_style | py::array::forcecast>>();
+            auto scalar_buf = items_scalar.request();
+            if (!(scalar_buf.ndim == 1 && scalar_buf.shape[0] >= 1))
+            {
+                throw std::runtime_error("data_scalar_labels must be 1D array of length rows");
+            }
+            has_scalar_labels = true;
+        }
         auto buffer = items.request();
         if (num_threads <= 0)
             num_threads = num_threads_default;
@@ -337,7 +351,8 @@ public:
                     normalize_vector(vector_data, norm_array.data());
                     vector_data = norm_array.data();
                 }
-                appr_alg->addPoint((void *)vector_data, (size_t)id, replace_deleted, (void *)items_attr.data(0));
+                const void *scalar_ptr0 = has_scalar_labels ? (const void *)items_scalar.data(0) : nullptr;
+                appr_alg->addPoint((void *)vector_data, (size_t)id, replace_deleted, (void *)items_attr.data(0), scalar_ptr0);
                 start = 1;
                 ep_added = true;
             }
@@ -348,7 +363,8 @@ public:
                 ParallelFor(start, rows, num_threads, [&](size_t row, size_t threadId)
                             {
                     size_t id = ids.size() ? ids.at(row) : (cur_l + row);
-                    appr_alg->addPoint((void*)items.data(row), (size_t)id, replace_deleted,(void*)items_attr.data(row)); });
+                    const void *scalar_ptr = has_scalar_labels ? (const void *)items_scalar.data(row) : nullptr;
+                    appr_alg->addPoint((void*)items.data(row), (size_t)id, replace_deleted,(void*)items_attr.data(row), scalar_ptr); });
             }
             else
             {
@@ -360,7 +376,8 @@ public:
                     normalize_vector((float*)items.data(row), (norm_array.data() + start_idx));
 
                     size_t id = ids.size() ? ids.at(row) : (cur_l + row);
-                    appr_alg->addPoint((void*)(norm_array.data() + start_idx), (size_t)id, replace_deleted,(void*)items_attr.data(row)); });
+                    const void *scalar_ptr = has_scalar_labels ? (const void *)items_scalar.data(row) : nullptr;
+                    appr_alg->addPoint((void*)(norm_array.data() + start_idx), (size_t)id, replace_deleted,(void*)items_attr.data(row), scalar_ptr); });
             }
             cur_l += rows;
 
@@ -378,11 +395,11 @@ public:
             //         std::cout << "Progress: " << (node_id + 1) << " iterations completed." << std::endl;
             //     }
             // }
-            std::cout << "D = " << 2 << std::endl;
+            std::cout << "D = " << 3 << std::endl;
             auto operation = [&](size_t node_id, size_t /*threadId*/)
             {
                 // appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f); // 5, 10, 1.0f
-                appr_alg->getAttrAggregate(node_id, 2, 10, 1.0f);
+                appr_alg->getAttrAggregate(node_id, 3, 10, 1.0f);
             };
             auto start_time = std::chrono::high_resolution_clock::now(); // Start time
             ParallelFor(0, cur_l, num_threads, operation);
@@ -394,63 +411,71 @@ public:
             auto duration_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
             // Print the results
             std::cout << "Time taken (RW): " << duration_ms << " ms (" << duration_sec << " seconds)" << std::endl;
-            std::cout << "D = " << 3 << std::endl;
-            auto operation_a = [&](size_t node_id, size_t /*threadId*/)
-            {
-                // appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f); // 5, 10, 1.0f
-                appr_alg->getAttrAggregate(node_id, 3, 10, 1.0f);
-            };
-            start_time = std::chrono::high_resolution_clock::now(); // Start time
-            ParallelFor(0, cur_l, num_threads, operation_a);
-            // --------- end parallel walks
-            end_time = std::chrono::high_resolution_clock::now(); // End time
-                                                                  // compute mean,max,min
-                                                                  // Calculate time difference
-            duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-            duration_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
-            // Print the results
-            std::cout << "Time taken (RW): " << duration_ms << " ms (" << duration_sec << " seconds)" << std::endl;
-            std::cout << "D = " << 5 << std::endl;
-            auto operation_b = [&](size_t node_id, size_t /*threadId*/)
-            {
-                // appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f); // 5, 10, 1.0f
-                appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f);
-            };
-            start_time = std::chrono::high_resolution_clock::now(); // Start time
-            ParallelFor(0, cur_l, num_threads, operation_b);
-            // --------- end parallel walks
-            end_time = std::chrono::high_resolution_clock::now(); // End time
-                                                                  // compute mean,max,min
-                                                                  // Calculate time difference
-            duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-            duration_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
 
-            // Print the results
-            std::cout << "Time taken (RW): " << duration_ms << " ms (" << duration_sec << " seconds)" << std::endl;
-
+            // Compute per-dimension mean and deviation ranges over agg vectors
+            // Reset accumulators
             for (int i = 0; i < dim_attr; ++i)
             {
-                int c_mean = 0;
-                for (int j = 0; j < cur_l; ++j)
+                appr_alg->attr_mean[i] = 0.0f;
+                appr_alg->attr_max_dev[i] = -std::numeric_limits<float>::infinity();
+                appr_alg->attr_min_dev[i] = std::numeric_limits<float>::infinity();
+            }
+
+            std::vector<int> count_per_dim(static_cast<size_t>(dim_attr), 0);
+
+            // Single pass over rows to accumulate stats per dimension
+            for (int j = 0; j < cur_l; ++j)
+            {
+                float *row_values = (float *)appr_alg->getDataAttrAggByInternalId(j);
+                for (int i = 0; i < dim_attr; ++i)
                 {
-                    char *agg_vec_ptr = appr_alg->getDataAttrAggByInternalId(j);
-                    float *_arr = (float *)agg_vec_ptr;
-                    if (_arr[i] != 1)
+                    const float value = row_values[i];
+                    if (value != 1.0f)
                     {
-                        appr_alg->sum_agg[i] += _arr[i];
-                        c_mean++;
-                        if (_arr[i] > appr_alg->max_agg[i])
-                            appr_alg->max_agg[i] = _arr[i];
-                        if (_arr[i] < appr_alg->min_agg[i])
-                            appr_alg->min_agg[i] = _arr[i];
+                        appr_alg->attr_mean[i] += value;
+                        count_per_dim[static_cast<size_t>(i)] += 1;
+                        if (value > appr_alg->attr_max_dev[i])
+                            appr_alg->attr_max_dev[i] = value;
+                        if (value < appr_alg->attr_min_dev[i])
+                            appr_alg->attr_min_dev[i] = value;
                     }
                 }
-                appr_alg->sum_agg[i] = appr_alg->sum_agg[i] / c_mean;
-                appr_alg->max_agg[i] -= appr_alg->sum_agg[i];
-                appr_alg->min_agg[i] -= appr_alg->sum_agg[i];
+            }
+
+            // Finalize: convert sums to means and center min/max as deviations
+            for (int i = 0; i < dim_attr; ++i)
+            {
+                const int cnt = count_per_dim[static_cast<size_t>(i)];
+                if (cnt > 0)
+                {
+                    appr_alg->attr_mean[i] = appr_alg->attr_mean[i] / static_cast<float>(cnt);
+                    appr_alg->attr_max_dev[i] -= appr_alg->attr_mean[i];
+                    appr_alg->attr_min_dev[i] -= appr_alg->attr_mean[i];
+                }
+                else
+                {
+                    // No valid values for this dimension; set to neutral defaults
+                    appr_alg->attr_mean[i] = 0.0f;
+                    appr_alg->attr_max_dev[i] = 0.0f;
+                    appr_alg->attr_min_dev[i] = 0.0f;
+                }
             }
 
             // int ex = 0;
+            // Print attr_max_dev and attr_mean for debugging
+            std::cout << "attr_max_dev: ";
+            for (int i = 0; i < dim_attr; ++i)
+            {
+                std::cout << std::fixed << std::setprecision(6) << appr_alg->attr_max_dev[i] << " ";
+            }
+            std::cout << std::endl;
+
+            std::cout << "attr_mean: ";
+            for (int i = 0; i < dim_attr; ++i)
+            {
+                std::cout << std::fixed << std::setprecision(6) << appr_alg->attr_mean[i] << " ";
+            }
+            std::cout << std::endl;
             for (node_id = 0; node_id < 20; node_id++)
             {
                 // check vector in memory
@@ -459,15 +484,6 @@ public:
                 // cast to float
                 float *_arr = (float *)agg_vec_ptr;
                 int *_arr2 = (int *)node_attr_ptr;
-                for (int i = 0; i < dim_attr; ++i)
-                {
-                    // if (_arr[i] != 0)
-                    //     ex++;
-                    // std::cout << std::fixed << std::setprecision(3) << _arr[i] << " ";
-                    std::cout << _arr[i] << " ";
-                }
-                std::cout << std::endl;
-                std::cout << "--" << std::endl;
                 for (int i = 0; i < dim_attr; ++i)
                 {
 
@@ -483,45 +499,17 @@ public:
                 {
 
                     if (_arr[i] != 1)
-                        norm_val = (_arr[i] - appr_alg->sum_agg[i]);
+                        norm_val = (_arr[i] - appr_alg->attr_mean[i]);
                     else
                     {
-                        norm_val = 5 + appr_alg->max_agg[i];
+                        norm_val = 5 + appr_alg->attr_max_dev[i];
                     }
-                    // std::cout << std::fixed << std::setprecision(3) << norm_val << " ";
-                    std::cout << norm_val << " ";
+                    std::cout << std::fixed << std::setprecision(3) << norm_val << "(" << _arr[i] << ")";
+                    // std::cout << norm_val << " ";
                 }
                 std::cout << std::endl;
-                // compress vector
-                // for (int i = 0; i < dim_attr; ++i)
-                // {
-                //     float norm_val = 1;
-                //     float compress_val = 1;
-                //     if (_arr[i] != 1)
-                //     {
-                //         norm_val = (_arr[i] - appr_alg->sum_agg[i]); // / appr_alg->sum_sq_agg[i];
-                //         compress_val = appr_alg->getBinCode(_arr[i], appr_alg->min_agg[i], appr_alg->max_agg[i], std::pow(2, compress_bits));
-                //     }
-                //     std::cout << std::fixed << std::setprecision(3) << compress_val << " ";
-                // }
-                // std::cout << std::endl;
                 std::cout << "------------------------" << std::endl;
             }
-            // std::cout << "ex vals : " << ex << std::endl;
-
-            // for (int i = 0; i < dim_attr; ++i)
-            // {
-            //     std::cout << std::fixed << std::setprecision(3) << appr_alg->sum_agg[i] << " ";
-            // }
-            // std::cout << std::endl;
-            // std::cout << "------------------------" << std::endl;
-
-            // for (int i = 0; i < dim_attr; ++i)
-            // {
-            //     std::cout << std::fixed << std::setprecision(3) << appr_alg->sum_sq_agg[i] << " ";
-            // }
-            // std::cout << std::endl;
-            // std::cout << "------------------------" << std::endl;
 
             // normalize and compress
             for (int j = 0; j < cur_l; ++j)
@@ -535,15 +523,15 @@ public:
                 {
                     // if (_arr[i] != 1)
                     // {
-                    //     float norm_val = (_arr[i] - appr_alg->sum_agg[i]); /// appr_alg->sum_sq_agg[i];
-                    //     _arr[i] = appr_alg->getBinCode(_arr[i], appr_alg->min_agg[i], appr_alg->max_agg[i], std::pow(2, compress_bits));
+                    //     float norm_val = (_arr[i] - appr_alg->attr_mean[i]); /// appr_alg->sum_sq_agg[i];
+                    //     _arr[i] = appr_alg->getBinCode(_arr[i], appr_alg->attr_min_dev[i], appr_alg->attr_max_dev[i], std::pow(2, compress_bits));
                     // }
                     // norm start
                     if (_arr[i] != 1)
-                        norm_val = (_arr[i] - appr_alg->sum_agg[i]);
+                        norm_val = (_arr[i] - appr_alg->attr_mean[i]);
                     else
                     {
-                        norm_val = 5 + appr_alg->max_agg[i];
+                        norm_val = 5 + appr_alg->attr_max_dev[i];
                     }
                     _arr[i] = norm_val;
                     // norm end
@@ -946,6 +934,7 @@ public:
     py::object knnQuery_return_numpy(
         py::object input,
         py::object input_attr,
+        py::object input_ranges = py::none(),
         bool collect_metrics = false,
         size_t k = 1,
         int num_threads = -1,
@@ -953,6 +942,18 @@ public:
     {
         py::array_t<dist_t, py::array::c_style | py::array::forcecast> items(input);
         py::array_t<int, py::array::c_style | py::array::forcecast> items_attr(input_attr);
+        py::array_t<float, py::array::c_style | py::array::forcecast> ranges_arr;
+        bool has_ranges = false;
+        if (!input_ranges.is_none())
+        {
+            ranges_arr = input_ranges.cast<py::array_t<float, py::array::c_style | py::array::forcecast>>();
+            auto rb = ranges_arr.request();
+            if (!(rb.ndim == 2 && rb.shape[1] == 2))
+            {
+                throw std::runtime_error("input_ranges must be (rows, 2) float array [low, high]");
+            }
+            has_ranges = true;
+        }
         auto buffer = items.request();
         hnswlib::labeltype *data_numpy_l;
         dist_t *data_numpy_d;
@@ -988,10 +989,12 @@ public:
             // std::cout << "hybrid_factor_ " << appr_alg->hybrid_factor_ << std::endl;
             if (normalize == false)
             {
+
                 ParallelFor(0, rows, num_threads, [&](size_t row, size_t threadId)
                             {
+                    const void* qrange = has_ranges ? (const void*)ranges_arr.data(row) : nullptr;
                     std::priority_queue<std::pair<dist_t, hnswlib::labeltype >> result = appr_alg->searchKnn(
-                        (void*)items.data(row), k, p_idFilter,(void*)items_attr.data(row),collect_metrics);
+                        (void*)items.data(row), k, p_idFilter,(void*)items_attr.data(row), qrange, collect_metrics);
                         // (void*)items_attr.data(row)
                     // if (result.size() != k)
                     //     throw std::runtime_error(
@@ -1016,12 +1019,12 @@ public:
                 ParallelFor(0, rows, num_threads, [&](size_t row, size_t threadId)
                             {
                     float* data = (float*)items.data(row);
-
                     size_t start_idx = threadId * dim;
                     normalize_vector((float*)items.data(row), (norm_array.data() + start_idx));
 
+                    const void* qrange = has_ranges ? (const void*)ranges_arr.data(row) : nullptr;
                     std::priority_queue<std::pair<dist_t, hnswlib::labeltype >> result = appr_alg->searchKnn(
-                        (void*)(norm_array.data() + start_idx), k, p_idFilter,(void*)items_attr.data(row),collect_metrics);
+                        (void*)(norm_array.data() + start_idx), k, p_idFilter,(void*)items_attr.data(row), qrange, collect_metrics);
                     // if (result.size() != k)
                     //     throw std::runtime_error(
                     //         "Cannot return the results in a contigious 2D array. Probably ef or M is too small");
@@ -1194,10 +1197,17 @@ public:
             norm_array[i] = data[i] * norm;
     }
 
-    void addItems(py::object input, py::object input_attr, py::object ids_ = py::none())
+    void addItems(py::object input, py::object input_attr, py::object data_scalar_labels = py::none(), py::object ids_ = py::none())
     {
         py::array_t<dist_t, py::array::c_style | py::array::forcecast> items(input);
         py::array_t<int, py::array::c_style | py::array::forcecast> items_attr(input_attr);
+        py::array_t<float, py::array::c_style | py::array::forcecast> items_scalar;
+        bool has_scalar_labels = false;
+        if (!data_scalar_labels.is_none())
+        {
+            items_scalar = data_scalar_labels.cast<py::array_t<float, py::array::c_style | py::array::forcecast>>();
+            has_scalar_labels = true;
+        }
         auto buffer = items.request();
         size_t rows, features;
         get_input_array_shapes(buffer, &rows, &features);
@@ -1211,15 +1221,16 @@ public:
             for (size_t row = 0; row < rows; row++)
             {
                 size_t id = ids.size() ? ids.at(row) : cur_l + row;
+                const void *scalar_ptr = has_scalar_labels ? (const void *)items_scalar.data(row) : nullptr;
                 if (!normalize)
                 {
-                    alg->addPoint((void *)items.data(row), (size_t)id, false, (void *)items_attr.data(row));
+                    alg->addPoint((void *)items.data(row), (size_t)id, false, (void *)items_attr.data(row), scalar_ptr);
                 }
                 else
                 {
                     std::vector<float> normalized_vector(dim);
                     normalize_vector((float *)items.data(row), normalized_vector.data());
-                    alg->addPoint((void *)normalized_vector.data(), (size_t)id, false, (void *)items_attr.data(row));
+                    alg->addPoint((void *)normalized_vector.data(), (size_t)id, false, (void *)items_attr.data(row), scalar_ptr);
                 }
             }
             cur_l += rows;
@@ -1251,12 +1262,20 @@ public:
     py::object knnQuery_return_numpy(
         py::object input,
         py::object input_attr,
+        py::object input_ranges = py::none(),
         size_t k = 1,
         int num_threads = 1,
         const std::function<bool(hnswlib::labeltype)> &filter = nullptr)
     {
         py::array_t<dist_t, py::array::c_style | py::array::forcecast> items(input);
         py::array_t<int, py::array::c_style | py::array::forcecast> items_attr(input_attr);
+        py::array_t<float, py::array::c_style | py::array::forcecast> ranges_arr;
+        bool has_ranges = false;
+        if (!input_ranges.is_none())
+        {
+            ranges_arr = input_ranges.cast<py::array_t<float, py::array::c_style | py::array::forcecast>>();
+            has_ranges = true;
+        }
         auto buffer = items.request();
         hnswlib::labeltype *data_numpy_l;
         dist_t *data_numpy_d;
@@ -1272,23 +1291,12 @@ public:
             CustomFilterFunctor idFilter(filter);
             CustomFilterFunctor *p_idFilter = filter ? &idFilter : nullptr;
 
-            // for (size_t row = 0; row < rows; row++)
-            // {
-            //     std::priority_queue<std::pair<dist_t, hnswlib::labeltype>> result = alg->searchKnn(
-            //         (void *)items.data(row), k, p_idFilter, (void *)items_attr.data(row));
-            //     for (int i = k - 1; i >= 0; i--)
-            //     {
-            //         auto &result_tuple = result.top();
-            //         data_numpy_d[row * k + i] = result_tuple.first;
-            //         data_numpy_l[row * k + i] = result_tuple.second;
-            //         result.pop();
-            //     }
-            // }
             ParallelFor(0, rows, num_threads, [&](size_t row, size_t threadId)
                         {
              
+                    const void* qrange = has_ranges ? (const void*)ranges_arr.data(row) : nullptr;
                     std::priority_queue<std::pair<dist_t, hnswlib::labeltype>> result = alg->searchKnn(
-                    (void *)items.data(row), k, p_idFilter, (void *)items_attr.data(row));
+                    (void *)items.data(row), k, p_idFilter, (void *)items_attr.data(row), qrange);
                     for (int i = k - 1; i >= 0; i--) {
                         if (result.empty()){
                             data_numpy_d[row * k + i] = NULL;
@@ -1344,6 +1352,7 @@ PYBIND11_PLUGIN(hnswlib)
              &Index<float>::knnQuery_return_numpy,
              py::arg("data"),
              py::arg("data_attr"),
+             py::arg("ranges") = py::none(),
              py::arg("collect_metrics") = false,
              py::arg("k") = 1,
              py::arg("num_threads") = -1,
@@ -1352,6 +1361,7 @@ PYBIND11_PLUGIN(hnswlib)
              &Index<float>::addItems,
              py::arg("data"),
              py::arg("data_attr"),
+             py::arg("data_scalar_labels") = py::none(),
              py::arg("ids") = py::none(),
              py::arg("num_threads") = -1,
              py::arg("replace_deleted") = false)
@@ -1419,10 +1429,11 @@ PYBIND11_PLUGIN(hnswlib)
         .def("init_index", &BFIndex<float>::init_new_index, py::arg("max_elements"))
         .def("knn_query", &BFIndex<float>::knnQuery_return_numpy, py::arg("data"),
              py::arg("data_attr"),
+             py::arg("ranges") = py::none(),
              py::arg("k") = 1,
              py::arg("num_threads") = -1,
              py::arg("filter") = py::none())
-        .def("add_items", &BFIndex<float>::addItems, py::arg("data"), py::arg("data_attr"), py::arg("ids") = py::none())
+        .def("add_items", &BFIndex<float>::addItems, py::arg("data"), py::arg("data_attr"), py::arg("data_scalar_labels") = py::none(), py::arg("ids") = py::none())
         .def("delete_vector", &BFIndex<float>::deleteVector, py::arg("label"))
         .def("save_index", &BFIndex<float>::saveIndex, py::arg("path_to_index"))
         .def("load_index", &BFIndex<float>::loadIndex, py::arg("path_to_index"), py::arg("max_elements") = 0)

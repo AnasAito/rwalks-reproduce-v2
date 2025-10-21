@@ -25,6 +25,7 @@ namespace hnswlib
         mutable std::atomic<size_t> cur_element_count{0}; // current number of elements
         size_t size_data_per_element_{0};
         size_t size_data_attr_per_element_{0};
+        size_t size_scalar_label_per_element_{0};
         size_t size_data_attr_agg_per_element_{0};
         size_t size_links_per_element_{0};
         mutable std::atomic<size_t> num_deleted_{0}; // number of deleted elements
@@ -38,10 +39,10 @@ namespace hnswlib
         int search_mode{0};
         // float sum_agg_{0.0f};
         // float sum_sq_agg_{0.0f};
-        std::vector<float> sum_agg;
+        std::vector<float> attr_mean;
         std::vector<float> sum_sq_agg;
-        std::vector<float> max_agg;
-        std::vector<float> min_agg;
+        std::vector<float> attr_max_dev;
+        std::vector<float> attr_min_dev;
 
         double mult_{0.0}, revSize_{0.0};
         int maxlevel_{0};
@@ -63,6 +64,7 @@ namespace hnswlib
 
         char *data_level0_memory_{nullptr};
         char *data_attr_memory_{nullptr};
+        char *data_scalar_label_memory_{nullptr};
         char *data_attr_agg_memory_{nullptr};
         char **linkLists_{nullptr};
         std::vector<int> element_levels_; // keeps level of each element
@@ -140,10 +142,10 @@ namespace hnswlib
             maxM_ = M_;
             maxM0_ = M_ * 2;
 
-            sum_agg.resize(data_attr_size_, 0.0f);
+            attr_mean.resize(data_attr_size_, 0.0f);
             sum_sq_agg.resize(data_attr_size_, 0.0f);
-            max_agg.resize(data_attr_size_, -50.0f);
-            min_agg.resize(data_attr_size_, 50.0f);
+            attr_max_dev.resize(data_attr_size_, -50.0f);
+            attr_min_dev.resize(data_attr_size_, 50.0f);
 
             ef_construction_ = std::max(ef_construction, M_);
             ef_ = 10;
@@ -165,6 +167,11 @@ namespace hnswlib
             data_attr_memory_ = (char *)malloc(max_elements_ * size_data_attr_per_element_);
             if (data_attr_memory_ == nullptr)
                 throw std::runtime_error("Not enough memory (Attr data)");
+
+            size_scalar_label_per_element_ = sizeof(float);
+            data_scalar_label_memory_ = (char *)malloc(max_elements_ * size_scalar_label_per_element_);
+            if (data_scalar_label_memory_ == nullptr)
+                throw std::runtime_error("Not enough memory (Scalar label data)");
 
             size_data_attr_agg_per_element_ = data_attr_agg_size_; // dist_attr_func_param_ * sizeof(float);
             data_attr_agg_memory_ = (char *)malloc(max_elements_ * size_data_attr_agg_per_element_);
@@ -196,6 +203,7 @@ namespace hnswlib
         {
             free(data_level0_memory_);
             free(data_attr_memory_);
+            free(data_scalar_label_memory_);
             for (tableint i = 0; i < cur_element_count; i++)
             {
                 if (element_levels_[i] > 0)
@@ -266,6 +274,10 @@ namespace hnswlib
         inline char *getDataAttrByInternalId(tableint internal_id) const
         {
             return (data_attr_memory_ + internal_id * size_data_attr_per_element_);
+        }
+        inline float getScalarLabelByInternalId(tableint internal_id) const
+        {
+            return *((float *)(data_scalar_label_memory_ + internal_id * size_scalar_label_per_element_));
         }
         inline char *getDataAttrAggByInternalId(tableint internal_id) const
         {
@@ -768,12 +780,22 @@ namespace hnswlib
         }
         template <bool has_deletions>
         std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis>
-        searchBaseLayerSTAttrOnly(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const bool collect_metrics = false) const
+        searchBaseLayerSTAttrOnly(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
         {
             VisitedList *vl = visited_list_pool_->getFreeVisitedList();
             vl_type *visited_array = vl->mass;
             vl_type visited_array_tag = vl->curV;
             std::string search_method = "dpq";
+
+            // Example: how to access raw range and a node's scalar label (for your implementation):
+            const float *range = (const float *)query_range; // [low, high]
+            float low = range ? range[0] : -std::numeric_limits<float>::infinity();
+            float high = range ? range[1] : std::numeric_limits<float>::infinity();
+            // float ep_scalar = getScalarLabelByInternalId(ep_id); // scalar label of entrypoint
+            // Optimized range check (early-exit, branch-friendly):
+            // const bool range_ok = !query_range || ((ep_scalar >= static_cast<const float*>(query_range)[0]) && (ep_scalar <= static_cast<const float*>(query_range)[1]));
+            // Robust bounds version (swap once if needed):
+            // const float* r = static_cast<const float*>(query_range); float lo = r? r[0] : -std::numeric_limits<float>::infinity(); float hi = r? r[1] : std::numeric_limits<float>::infinity(); if (hi < lo) std::swap(lo, hi); const bool range_ok2 = (ep_scalar >= lo) && (ep_scalar <= hi);
 
             std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis>
                 top_valid_only_candidates;
@@ -803,7 +825,8 @@ namespace hnswlib
             }
 
             lowerBound = dist;
-            top_candidates.emplace(std::make_pair(dist, distAttrAgg >= valid_indices_count * 5), ep_id);
+            float cand_scalar = getScalarLabelByInternalId(ep_id);
+            top_candidates.emplace(std::make_pair(dist, (cand_scalar >= low) && (cand_scalar <= high)), ep_id);
             candidate_set.emplace(std::make_pair(-dist, true), ep_id);
 
             visited_array[ep_id] = visited_array_tag;
@@ -875,10 +898,16 @@ namespace hnswlib
                             point_attr_eval++;
                         }
                     }
-
+                    // std::cout << "pron_factor_ = " << pron_factor_ << std::endl;
+                    // std::cout << "node_to_probe = " << node_to_probe << std::endl;
+                    // std::cout << "distAttrAgg = " << distAttrAgg << std::endl;
+                    // std::cout << "valid_indices_count = " << valid_indices_count << std::endl;
+                    // std::cout << "--------------------------------" << std::endl;
                     if (node_to_probe)
                     {
                         // visited_array[candidate_id] = visited_array_tag;
+                        // Example: scalar label of a candidate node (use in your logic):
+                        // float cand_scalar = getScalarLabelByInternalId(candidate_id);
                         char *currObj1 = (getDataByInternalId(candidate_id));
 
                         dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
@@ -903,11 +932,8 @@ namespace hnswlib
                                          _MM_HINT_T0);      ////////////////////////
 #endif
 
-                            // if ((!has_deletions || !isMarkedDeleted(candidate_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(candidate_id))))
-                            // {
-                            // std::cout <<"dist = "<< distAttrAgg << std::endl;
-                            top_candidates.emplace(std::make_pair(dist, distAttrAgg >= 5 * valid_indices_count), candidate_id);
-                            // }
+                            float cand_scalar = getScalarLabelByInternalId(candidate_id); // scalar label of candidate
+                            top_candidates.emplace(std::make_pair(dist, ((cand_scalar >= low) && (cand_scalar <= high))), candidate_id);
 
                             if (top_candidates.size() > ef)
                             {
@@ -915,10 +941,8 @@ namespace hnswlib
                                 if (search_method == "dpq")
                                 {
                                     topElement = top_candidates.top();
-                                    // distAttr = fstdistattrfunc_((void *)valid_indices, (void *)&valid_indices_count, mapRefs.find(topElement.second)->second);
-                                    // isCandAttrAllowed = (distAttr == 0);
-                                    isCandAttrAllowed = topElement.first.second;
-                                    if (isCandAttrAllowed)
+
+                                    if (topElement.first.second)
                                         top_valid_only_candidates.emplace(topElement);
                                 }
 
@@ -948,18 +972,19 @@ namespace hnswlib
 
             if (search_method == "dpq")
             {
+
                 // double_pq
                 while (!top_candidates.empty())
                 {
                     topElement = top_candidates.top();
-                    // distAttr = fstdistattrfunc_((void *)valid_indices, (void *)&valid_indices_count, mapRefs.find(topElement.second)->second);
-                    // isCandAttrAllowed = (distAttr == 0);
-                    isCandAttrAllowed = topElement.first.second;
-                    if (isCandAttrAllowed)
+                    // std::cout << "  (dist=" << topElement.first.first << ", is_valid=" << topElement.first.second
+                    //           << ") id=" << topElement.second << std::endl;
+                    if (topElement.first.second)
+                    {
                         top_valid_only_candidates.emplace(topElement);
+                    }
                     top_candidates.pop();
                 }
-
                 return top_valid_only_candidates;
             }
             if (search_method == "snf")
@@ -970,8 +995,7 @@ namespace hnswlib
                     topElement = top_candidates.top();
                     // distAttr = fstdistattrfunc_((void *)valid_indices, (void *)&valid_indices_count, mapRefs.find(topElement.second)->second);
                     // isCandAttrAllowed = (distAttr == 0);
-                    isCandAttrAllowed = topElement.first.second;
-                    if (isCandAttrAllowed)
+                    if (topElement.first.second)
                         top_valid_only_candidates.emplace(topElement);
                     else
                         top_valid_only_candidates.emplace(std::make_pair(300000.0f + topElement.first.first, false), topElement.second);
@@ -982,7 +1006,7 @@ namespace hnswlib
         }
         template <bool has_deletions>
         std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>
-        searchBaseLayerSTFpq(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const bool collect_metrics = false) const
+        searchBaseLayerSTFpq(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
         {
             VisitedList *vl = visited_list_pool_->getFreeVisitedList();
             vl_type *visited_array = vl->mass;
@@ -1126,7 +1150,7 @@ namespace hnswlib
         }
         template <bool has_deletions>
         std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>
-        searchBaseLayerSTSnfRobust(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const bool collect_metrics = false) const
+        searchBaseLayerSTSnfRobust(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
         {
             VisitedList *vl = visited_list_pool_->getFreeVisitedList();
             vl_type *visited_array = vl->mass;
@@ -1289,7 +1313,7 @@ namespace hnswlib
         }
         template <bool has_deletions>
         std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>
-        searchBaseLayerSTSnf(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const bool collect_metrics = false) const
+        searchBaseLayerSTSnf(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
         {
             VisitedList *vl = visited_list_pool_->getFreeVisitedList();
             vl_type *visited_array = vl->mass;
@@ -1691,13 +1715,13 @@ namespace hnswlib
                     // (vec_attr_agg[j] / walk_count) + 0.08f;
                 }
             }
-            if (node_id == 0)
-            {
-                std::cout << " vec_attr_agg ---------------------------------" << std::endl;
+            // if (node_id == 0)
+            // {
+            //     std::cout << " vec_attr_agg ---------------------------------" << std::endl;
 
-                displayArray(vec_attr_agg, dim_attr);
-                std::cout << "---------------------------------" << std::endl;
-            }
+            //     displayArray(vec_attr_agg, dim_attr);
+            //     std::cout << "---------------------------------" << std::endl;
+            // }
 
             // write to memory
             memcpy(data_attr_agg_memory_ + node_id * size_data_attr_agg_per_element_, vec_attr_agg, size_data_attr_agg_per_element_);
@@ -2378,7 +2402,7 @@ namespace hnswlib
          * Adds point. Updates the point if it is already in the index.
          * If replacement of deleted elements is enabled: replaces previously deleted point if any, updating it with new point
          */
-        void addPoint(const void *data_point, labeltype label, bool replace_deleted = false, const void *datapoint_attr = nullptr)
+        void addPoint(const void *data_point, labeltype label, bool replace_deleted = false, const void *datapoint_attr = nullptr, const void *datapoint_scalar_label = nullptr)
         {
             if ((allow_replace_deleted_ == false) && (replace_deleted == true))
             {
@@ -2389,7 +2413,7 @@ namespace hnswlib
             std::unique_lock<std::mutex> lock_label(getLabelOpMutex(label));
             if (!replace_deleted)
             {
-                addPoint(data_point, label, -1, datapoint_attr);
+                addPoint(data_point, label, -1, datapoint_attr, datapoint_scalar_label);
                 return;
             }
             // check if there is vacant place
@@ -2407,7 +2431,7 @@ namespace hnswlib
             // else add point to vacant place
             if (!is_vacant_place)
             {
-                addPoint(data_point, label, -1, datapoint_attr);
+                addPoint(data_point, label, -1, datapoint_attr, datapoint_scalar_label);
             }
             else
             {
@@ -2602,7 +2626,7 @@ namespace hnswlib
             return result;
         }
 
-        tableint addPoint(const void *data_point, labeltype label, int level, const void *datapoint_attr = nullptr)
+        tableint addPoint(const void *data_point, labeltype label, int level, const void *datapoint_attr = nullptr, const void *datapoint_scalar_label = nullptr)
         {
             tableint cur_c = 0;
             {
@@ -2663,6 +2687,8 @@ namespace hnswlib
             // copy datapoint attr-mem in
             if (datapoint_attr)
                 memcpy(data_attr_memory_ + cur_c * size_data_attr_per_element_, datapoint_attr, size_data_attr_per_element_);
+            if (datapoint_scalar_label)
+                memcpy(data_scalar_label_memory_ + cur_c * size_scalar_label_per_element_, datapoint_scalar_label, size_scalar_label_per_element_);
 
             if (curlevel)
             {
@@ -2749,7 +2775,7 @@ namespace hnswlib
             return cur_c;
         }
         std::priority_queue<std::pair<dist_t, labeltype>>
-        searchKnn(const void *query_data, size_t k, BaseFilterFunctor *isIdAllowed = nullptr, const void *query_data_attr = nullptr, const bool collect_metrics = false) const
+        searchKnn(const void *query_data, size_t k, BaseFilterFunctor *isIdAllowed = nullptr, const void *query_data_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
         {
             std::priority_queue<std::pair<dist_t, labeltype>> result;
             if (cur_element_count == 0)
@@ -2802,7 +2828,7 @@ namespace hnswlib
             {
                 std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis> top_candidates;
                 top_candidates = searchBaseLayerSTAttrOnly<false>(
-                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, collect_metrics);
+                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, query_range, collect_metrics);
                 while (top_candidates.size() > k)
                 {
                     top_candidates.pop();
@@ -2820,18 +2846,18 @@ namespace hnswlib
             if (search_mode == 1)
             {
                 top_candidates = searchBaseLayerSTFpq<false>(
-                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, collect_metrics);
+                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, query_range, collect_metrics);
             }
 
             if (search_mode == 2)
             {
                 top_candidates = searchBaseLayerSTSnf<false>(
-                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, collect_metrics);
+                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, query_range, collect_metrics);
             }
             if (search_mode == 3)
             {
                 top_candidates = searchBaseLayerSTSnfRobust<false>(
-                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, collect_metrics);
+                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, query_range, collect_metrics);
             }
             while (top_candidates.size() > k)
             {

@@ -13,10 +13,12 @@ namespace hnswlib
     public:
         char *data_;
         char *data_attr_;
+        char *data_scalar_label_;
         size_t maxelements_;
         size_t cur_element_count;
         size_t size_per_element_;
         size_t size_attr_per_element_;
+        size_t size_scalar_label_per_element_;
 
         size_t data_size_;
         size_t data_attr_size_;
@@ -30,10 +32,12 @@ namespace hnswlib
         BruteforceSearch(SpaceInterface<dist_t> *s)
             : data_(nullptr),
               data_attr_(nullptr),
+              data_scalar_label_(nullptr),
               maxelements_(0),
               cur_element_count(0),
               size_per_element_(0),
               size_attr_per_element_(0),
+              size_scalar_label_per_element_(0),
               data_size_(0),
               data_attr_size_(0),
               dist_func_param_(nullptr),
@@ -44,10 +48,12 @@ namespace hnswlib
         BruteforceSearch(SpaceInterface<dist_t> *s, const std::string &location)
             : data_(nullptr),
               data_attr_(nullptr),
+              data_scalar_label_(nullptr),
               maxelements_(0),
               cur_element_count(0),
               size_per_element_(0),
               size_attr_per_element_(0),
+              size_scalar_label_per_element_(0),
               data_size_(0),
               data_attr_size_(0),
               dist_func_param_(nullptr),
@@ -72,6 +78,10 @@ namespace hnswlib
             data_attr_ = (char *)malloc(maxElements * size_attr_per_element_);
             if (data_attr_ == nullptr)
                 throw std::runtime_error("Not enough memory: BruteforceSearch failed to allocate data_attr");
+            size_scalar_label_per_element_ = sizeof(float);
+            data_scalar_label_ = (char *)malloc(maxElements * size_scalar_label_per_element_);
+            if (data_scalar_label_ == nullptr)
+                throw std::runtime_error("Not enough memory: BruteforceSearch failed to allocate data_scalar_label");
             cur_element_count = 0;
         }
 
@@ -79,9 +89,10 @@ namespace hnswlib
         {
             free(data_);
             free(data_attr_);
+            free(data_scalar_label_);
         }
 
-        void addPoint(const void *datapoint, labeltype label, bool replace_deleted = false, const void *datapoint_attr = nullptr)
+        void addPoint(const void *datapoint, labeltype label, bool replace_deleted = false, const void *datapoint_attr = nullptr, const void *datapoint_scalar_label = nullptr)
         {
             int idx;
             {
@@ -113,6 +124,10 @@ namespace hnswlib
             memcpy(data_ + size_per_element_ * idx + data_size_, &label, sizeof(labeltype));
             memcpy(data_ + size_per_element_ * idx, datapoint, data_size_);
             memcpy(data_attr_ + size_attr_per_element_ * idx, datapoint_attr, data_attr_size_);
+            if (datapoint_scalar_label)
+            {
+                memcpy(data_scalar_label_ + size_scalar_label_per_element_ * idx, datapoint_scalar_label, size_scalar_label_per_element_);
+            }
             // std::cout << "finsihed adding: " << idx << std::endl;
         }
 
@@ -134,7 +149,7 @@ namespace hnswlib
             return *((int *)(data_attr_ + size_attr_per_element_ * offset + query_label_idx * sizeof(int))) == 1;
         }
         std::priority_queue<std::pair<dist_t, labeltype>>
-        searchKnn(const void *query_data, size_t k, BaseFilterFunctor *isIdAllowed = nullptr, const void *datapoint_attr = nullptr, const bool collect_metrics = false) const
+        searchKnn(const void *query_data, size_t k, BaseFilterFunctor *isIdAllowed = nullptr, const void *datapoint_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
         {
             assert(k <= cur_element_count);
             std::priority_queue<std::pair<dist_t, labeltype>> topResults;
@@ -151,6 +166,11 @@ namespace hnswlib
                     break;
                 }
             }
+            // Example: how to access the raw range and a point's scalar label for your own filtering:
+            // const float* rh = (const float*)query_range; // [low, high]
+            // float low = rh ? rh[0] : -std::numeric_limits<float>::infinity();
+            // float high = rh ? rh[1] : std::numeric_limits<float>::infinity();
+            // float some_point_scalar = *((float*)(data_scalar_label_ + size_scalar_label_per_element_ * some_idx));
             // std::cout << "query_label_idx = " << query_label_idx << std::endl;
             while (topResults.size() < k)
             {

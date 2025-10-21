@@ -179,10 +179,12 @@ namespace hnswlib
     class AlgorithmInterface
     {
     public:
-        virtual void addPoint(const void *datapoint, labeltype label, bool replace_deleted = false, const void *datapoint_attr = nullptr) = 0;
+        // datapoint_scalar_label: optional pointer to a scalar label value per point (e.g., float)
+        virtual void addPoint(const void *datapoint, labeltype label, bool replace_deleted = false, const void *datapoint_attr = nullptr, const void *datapoint_scalar_label = nullptr) = 0;
 
         virtual std::priority_queue<std::pair<dist_t, labeltype>>
-        searchKnn(const void *, size_t, BaseFilterFunctor *isIdAllowed = nullptr, const void *datapoint_attr = nullptr, const bool collect_metrics = false) const = 0;
+        // query_range: optional pointer to 2 floats [low, high] for range filtering by stored scalar labels
+        searchKnn(const void *, size_t, BaseFilterFunctor *isIdAllowed = nullptr, const void *datapoint_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const = 0;
 
         // Return k nearest neighbor in the order of closer fist
         virtual std::vector<std::pair<dist_t, labeltype>>
@@ -202,7 +204,7 @@ namespace hnswlib
         std::vector<std::pair<dist_t, labeltype>> result;
 
         // here searchKnn returns the result in the order of further first
-        auto ret = searchKnn(query_data, k, isIdAllowed);
+        auto ret = searchKnn(query_data, k, isIdAllowed, nullptr, nullptr);
         {
             size_t sz = ret.size();
             result.resize(sz);
