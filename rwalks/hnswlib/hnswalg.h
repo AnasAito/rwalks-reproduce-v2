@@ -683,11 +683,11 @@ namespace hnswlib
 #endif
         }
 
-        // Max over vec[idx[0..k-1]] with early termination if any value > early_stop (default 5.0f).
-        static inline float max_by_indices_f32_early(const float *__restrict vec,
-                                                     const int *__restrict idx,
-                                                     int k,
-                                                     float early_stop = 4.0f)
+        // Max(vec[idx[i]]) with early termination if any value > early_stop (default 5.0f).
+        static inline float max_by_indices_f32_early_scalar(const float *__restrict vec,
+                                                            const int *__restrict idx,
+                                                            int k,
+                                                            float early_stop = 5.0f)
         {
             if (k <= 0)
                 return -std::numeric_limits<float>::infinity();
@@ -697,7 +697,7 @@ namespace hnswlib
                 return m;
 
             int i = 1;
-            // Unrolled main loop
+            // Unrolled for tiny k (dyadic cover is small)
             for (; i + 3 < k; i += 4)
             {
                 float v0 = vec[idx[i + 0]];
@@ -742,239 +742,198 @@ namespace hnswlib
             return m;
         }
 
-        template <bool has_deletions>
-        std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis>
-        searchBaseLayerRange(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
+        // Mask (0/1) -> active indices (writes into a stack array). Returns count.
+        static inline int extract_active_indices_stack(const int *__restrict mask,
+                                                       int dim,
+                                                       int *__restrict out,
+                                                       int out_cap)
         {
+            int k = 0;
+            for (int i = 0; i < dim && k < out_cap; ++i)
+                if (mask[i])
+                    out[k++] = i;
+            return k;
+        }
+
+        // Final optimized BaseLayer search (uses your two helpers:
+        //  - extract_active_indices_stack()
+        //  - max_by_indices_f32_early_scalar())
+        template <bool has_deletions>
+        std::priority_queue<
+            std::pair<std::pair<dist_t, bool>, tableint>,
+            std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+            CompareByFirstBis>
+        searchBaseLayerRange(tableint ep_id,
+                             const void *data_point,
+                             size_t ef,
+                             BaseFilterFunctor *isIdAllowed = nullptr,
+                             const void *data_point_attr = nullptr, // int mask[dim_att], dyadic nodes in heap order
+                             const void *query_range = nullptr,     // optional: float [low, high]
+                             const bool collect_metrics = false) const
+        {
+            // ---------------- Visited init ----------------
             VisitedList *vl = visited_list_pool_->getFreeVisitedList();
             vl_type *visited_array = vl->mass;
             vl_type visited_array_tag = vl->curV;
-            std::string search_method = "dpq";
 
-            // Example: how to access raw range and a node's scalar label (for your implementation):
-            const float *range = (const float *)query_range; // [low, high]
-            float low = range ? range[0] : -std::numeric_limits<float>::infinity();
-            float high = range ? range[1] : std::numeric_limits<float>::infinity();
+            // ---------------- Range filter (optional) ----------------
+            const float *range = (const float *)query_range; // [low, high] or null
+            const float low = range ? range[0] : -std::numeric_limits<float>::infinity();
+            const float high = range ? range[1] : std::numeric_limits<float>::infinity();
 
-            std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis>
-                top_valid_only_candidates;
-            std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis> top_candidates;
-            std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis> candidate_set;
-            std::pair<std::pair<dist_t, bool>, tableint> topElement;
+            // ---------------- PQs ----------------
+            std::priority_queue<
+                std::pair<std::pair<dist_t, bool>, tableint>,
+                std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+                CompareByFirstBis>
+                top_valid_only_candidates; // returned (only items passing range filter)
 
-            char *currObj1Attr;
-            int distAttr;
-            dist_t distAttrAgg;
-            bool isCandAttrAllowed;
+            std::priority_queue<
+                std::pair<std::pair<dist_t, bool>, tableint>,
+                std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+                CompareByFirstBis>
+                top_candidates; // mixed; we carry a 'valid' flag next to distance
 
-            dist_t lowerBound;
+            std::priority_queue<
+                std::pair<std::pair<dist_t, bool>, tableint>,
+                std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+                CompareByFirstBis>
+                candidate_set; // frontier; stores (-dist) so top() is best (min-heap emulation)
 
-            // Todo
-            // int valid_indices_count = getAllValidIndicesCount(data_point_attr, dist_attr_func_param_);
-            // int *valid_indices = getAllValidIndices(data_point_attr, dist_attr_func_param_);
-            // std::cout << "valid_indices_count = " << valid_indices_count << std::endl;
-
+            // ---------------- Query mask -> active indices (once) ----------------
             const int *query_mask = (const int *)data_point_attr;
-            std::vector<int> active_idx;
-            active_idx.reserve(64);
-            const int k_active = extract_active_indices(query_mask, *((int *)dist_attr_func_param_), active_idx);
+            const int dim_att = *((int *)dist_attr_func_param_); // your stored attribute dimension
 
-            char *currObj1 = (getDataByInternalId(ep_id));
-            dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
+            // Stack buffer (no heap); 32 is generous for dyadic covers (~few actives).
+            int active_idx[32];
+            const int k_active = extract_active_indices_stack(query_mask, dim_att, active_idx, 32);
 
-            char *currObj1AttrAgg = (getDataAttrAggByInternalId(ep_id));
-            // distAttrAgg = fstdistattraggfunc_((void *)valid_indices, currObj1AttrAgg, (void *)&valid_indices_count);
-            // distAttrAgg = sum_by_indices_f32((const float *)currObj1AttrAgg, active_idx.data(), k_active);
-            distAttrAgg = max_by_indices_f32_early((const float *)currObj1AttrAgg, active_idx.data(), k_active);
+            // ---------------- Seed with entry point ----------------
+            char *ep_data = getDataByInternalId(ep_id);
+            dist_t dist = fstdistfunc_(data_point, ep_data, dist_func_param_);
 
-            if (hybrid_factor_ > 0)
-            {
-                dist -= hybrid_factor_ * (distAttrAgg > 5 ? distAttrAgg - 5 : distAttrAgg);
-            }
-
-            lowerBound = dist;
-            float cand_scalar = getScalarLabelByInternalId(ep_id);
-            top_candidates.emplace(std::make_pair(dist, (cand_scalar >= low) && (cand_scalar <= high)), ep_id);
+            dist_t lowerBound = dist;
+            const float ep_scalar = getScalarLabelByInternalId(ep_id);
+            top_candidates.emplace(std::make_pair(dist, (ep_scalar >= low && ep_scalar <= high)), ep_id);
             candidate_set.emplace(std::make_pair(-dist, true), ep_id);
-
             visited_array[ep_id] = visited_array_tag;
 
-            int nhops = 0;
-            int point_attr_eval = 0;
-            int valid_hops = 0;
-            int dist_calculations = 0;
+            // ---------------- Metrics ----------------
+            int nhops = 0, point_attr_eval = 0, dist_calculations = 0;
 
-            // std::vector<float> dist_per_q;
-
+            // ---------------- Main loop ----------------
             while (!candidate_set.empty())
             {
+                auto current = candidate_set.top();
 
-                std::pair<std::pair<dist_t, bool>, tableint> current_node_pair = candidate_set.top();
-
-                // if ((-current_node_pair.first.first) > lowerBound &&
-                //     (top_candidates.size() == ef || (!isIdAllowed && !has_deletions)))
-                if ((-current_node_pair.first.first) > lowerBound && top_candidates.size() == ef)
-                {
+                // Early exit if best possible candidate from frontier is already worse than LB and we have ef items
+                if ((-current.first.first) > lowerBound && top_candidates.size() == ef)
                     break;
-                }
+
                 candidate_set.pop();
+                const tableint curr_id = current.second;
 
-                tableint current_node_id = current_node_pair.second;
-                int *data = (int *)get_linklist0(current_node_id);
-                size_t size = getListCount((linklistsizeint *)data);
+                int *ll = (int *)get_linklist0(curr_id);
+                size_t degree = getListCount((linklistsizeint *)ll);
                 if (collect_metrics)
-                {
                     nhops++;
-                }
 
 #ifdef USE_SSE
-                _mm_prefetch((char *)(visited_array + *(data + 1)), _MM_HINT_T0);
-                _mm_prefetch((char *)(visited_array + *(data + 1) + 64), _MM_HINT_T0);
-                _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
-                _mm_prefetch((char *)(data + 2), _MM_HINT_T0);
+                _mm_prefetch((char *)(visited_array + *(ll + 1)), _MM_HINT_T0);
+                _mm_prefetch((char *)(visited_array + *(ll + 1) + 64), _MM_HINT_T0);
+                _mm_prefetch(data_level0_memory_ + (*(ll + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+                _mm_prefetch((char *)(ll + 2), _MM_HINT_T0);
 #endif
-                // std::vector<float> nei_dists(size, 0.0f);
-                int visited_count = 0;
-                for (size_t j = 1; j <= size; j++)
+
+                for (size_t j = 1; j <= degree; j++)
                 {
-                    int candidate_id = *(data + j);
-//                    if (candidate_id == 0) continue;
+                    const int cand_id = *(ll + j);
+
 #ifdef USE_SSE
-                    _mm_prefetch((char *)(visited_array + *(data + j + 1)), _MM_HINT_T0);
-                    _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
-                                 _MM_HINT_T0); ////////////
+                    _mm_prefetch((char *)(visited_array + *(ll + j + 1)), _MM_HINT_T0);
+                    _mm_prefetch(data_level0_memory_ + (*(ll + j + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
 #endif
+                    // visited: mark once, immediately
+                    if (visited_array[cand_id] == visited_array_tag)
+                        continue;
+                    visited_array[cand_id] = visited_array_tag;
 
-                    bool is_not_visited = !(visited_array[candidate_id] == visited_array_tag);
-                    bool node_to_probe = is_not_visited;
-                    // if (hybrid_factor_ > 0)
-                    // {
+                    // optional external filter
+                    if (isIdAllowed && !(*isIdAllowed)(cand_id))
+                        continue;
 
-                    // if (is_not_visited)
-                    // {
-                    // distAttrAgg = fstdistattraggfunc_(query_label, mapRefs.find(candidate_id)->second);
+                    // --- cheap attribute gate first (if enabled) ---
+                    bool probe = true;
+                    float cand_attr_max = 0.0f;
 
-                    if (pron_factor_ != -1 && is_not_visited)
+                    if (pron_factor_ != -1)
                     {
-                        char *currObj1AttrAgg = (getDataAttrAggByInternalId(candidate_id));
-                        // distAttrAgg = fstdistattraggfunc_((void *)valid_indices, currObj1AttrAgg, (void *)&valid_indices_count);
-                        // distAttrAgg = sum_by_indices_f32((const float *)currObj1AttrAgg, active_idx.data(), k_active);
-                        distAttrAgg = max_by_indices_f32_early((const float *)currObj1AttrAgg, active_idx.data(), k_active);
-                        // std::cout << "Old dist " << distAttrAgg << std::endl;
-                        // node_to_probe = node_to_probe && (distAttrAgg / valid_indices_count >= pron_factor_);
-                        // node_to_probe = node_to_probe && (distAttrAgg / k_active >= pron_factor_);
-                        node_to_probe = node_to_probe && (distAttrAgg >= pron_factor_);
-
-                        visited_array[candidate_id] = visited_array_tag;
-
+                        const float *candAttr = (const float *)getDataAttrAggByInternalId(cand_id);
+                        cand_attr_max = max_by_indices_f32_early_scalar(candAttr, active_idx, k_active, /*early_stop=*/5.0f);
                         if (collect_metrics)
-                        {
                             point_attr_eval++;
-                        }
+                        if (cand_attr_max < pron_factor_)
+                            continue; // prune early
                     }
-                    // std::cout << "pron_factor_ = " << pron_factor_ << std::endl;
-                    // std::cout << "node_to_probe = " << node_to_probe << std::endl;
-                    // std::cout << "distAttrAgg = " << distAttrAgg << std::endl;
-                    // std::cout << "valid_indices_count = " << valid_indices_count << std::endl;
-                    // std::cout << "--------------------------------" << std::endl;
-                    if (node_to_probe)
+
+                    // --- expensive vector distance only if passing the gate ---
+                    char *cand_data = getDataByInternalId(cand_id);
+                    dist_t d = fstdistfunc_(data_point, cand_data, dist_func_param_);
+                    // if (hybrid_factor_ > 0 && k_active > 0)
+                    // {
+                    //     const dist_t adj = (cand_attr_max > 5) ? (cand_attr_max - 5) : cand_attr_max;
+                    //     d -= hybrid_factor_ * adj;
+                    // }
+                    if (collect_metrics)
+                        dist_calculations++;
+
+                    if (top_candidates.size() < ef || lowerBound > d)
                     {
-                        // visited_array[candidate_id] = visited_array_tag;
-                        // Example: scalar label of a candidate node (use in your logic):
-                        // float cand_scalar = getScalarLabelByInternalId(candidate_id);
-                        char *currObj1 = (getDataByInternalId(candidate_id));
-
-                        dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-                        if (hybrid_factor_ > 0)
-                            dist -= hybrid_factor_ * (distAttrAgg > 5 ? distAttrAgg - 5 : distAttrAgg);
-
-                        if (collect_metrics)
-                        {
-                            dist_calculations++;
-                            // nei_dists.push_back(fstdistfunc_(data_point, currObj1, dist_func_param_));
-                            // visited_count++;
-                        }
-
-                        if (top_candidates.size() < ef || lowerBound > dist)
-                        {
-                            candidate_set.emplace(std::make_pair(-dist, true), candidate_id);
+                        candidate_set.emplace(std::make_pair(-d, true), cand_id);
 #ifdef USE_SSE
-                            _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
-                                             offsetLevel0_, ///////////
-                                         _MM_HINT_T0);      ////////////////////////
+                        _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ + offsetLevel0_, _MM_HINT_T0);
 #endif
+                        const float cscalar = getScalarLabelByInternalId(cand_id);
+                        top_candidates.emplace(std::make_pair(d, (cscalar >= low && cscalar <= high)), cand_id);
 
-                            float cand_scalar = getScalarLabelByInternalId(candidate_id); // scalar label of candidate
-                            top_candidates.emplace(std::make_pair(dist, ((cand_scalar >= low) && (cand_scalar <= high))), candidate_id);
+                        if (top_candidates.size() > ef)
+                        {
 
-                            if (top_candidates.size() > ef)
+                            auto poped_item = top_candidates.top(); // trim only; don't duplicate into valid-only queue here
+                            top_candidates.pop();
+                            if (poped_item.first.second)
                             {
-
-                                if (search_method == "dpq")
-                                {
-                                    topElement = top_candidates.top();
-
-                                    if (topElement.first.second)
-                                        top_valid_only_candidates.emplace(topElement);
-                                }
-
-                                top_candidates.pop();
+                                top_valid_only_candidates.emplace(poped_item);
                             }
-
-                            if (!top_candidates.empty())
-                                lowerBound = top_candidates.top().first.first;
                         }
+                        if (!top_candidates.empty())
+                            lowerBound = top_candidates.top().first.first;
                     }
                 }
+
                 if (collect_metrics)
                 {
-
-                    // float visited_ratio = (float)visited_count / (float)size;
                     distance_logger.push_back(dist_calculations);
                 }
             }
 
             visited_list_pool_->releaseVisitedList(vl);
+
             if (collect_metrics)
             {
                 test_metrics.push_back(std::make_tuple(dist_calculations, point_attr_eval, nhops));
-
                 curr_metric++;
             }
 
-            if (search_method == "dpq")
+            // -------- Build final valid-only queue once (filter by scalar range) --------
+            while (!top_candidates.empty())
             {
-
-                // double_pq
-                while (!top_candidates.empty())
-                {
-                    topElement = top_candidates.top();
-                    // std::cout << "  (dist=" << topElement.first.first << ", is_valid=" << topElement.first.second
-                    //           << ") id=" << topElement.second << std::endl;
-                    if (topElement.first.second)
-                    {
-                        top_valid_only_candidates.emplace(topElement);
-                    }
-                    top_candidates.pop();
-                }
-                return top_valid_only_candidates;
+                auto t = top_candidates.top();
+                if (t.first.second)
+                    top_valid_only_candidates.emplace(t);
+                top_candidates.pop();
             }
-            if (search_method == "snf")
-            {
-                // s_n_f : search then filter
-                while (!top_candidates.empty())
-                {
-                    topElement = top_candidates.top();
-                    // distAttr = fstdistattrfunc_((void *)valid_indices, (void *)&valid_indices_count, mapRefs.find(topElement.second)->second);
-                    // isCandAttrAllowed = (distAttr == 0);
-                    if (topElement.first.second)
-                        top_valid_only_candidates.emplace(topElement);
-                    else
-                        top_valid_only_candidates.emplace(std::make_pair(300000.0f + topElement.first.first, false), topElement.second);
-                    top_candidates.pop();
-                }
-                return top_valid_only_candidates;
-            }
+            return top_valid_only_candidates;
         }
 
         std::vector<tableint>
