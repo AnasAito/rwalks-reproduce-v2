@@ -9,6 +9,10 @@
 #include <unordered_set>
 #include <list>
 
+#if defined(__ARM_NEON) || defined(__aarch64__)
+#include <arm_neon.h>
+#endif
+
 namespace hnswlib
 {
     typedef unsigned int tableint;
@@ -513,967 +517,428 @@ namespace hnswlib
 
             return standardDeviation;
         }
+        //         void getContiguousValidRange(const void *data_point_attr, const void *size_of_list_ptr, int range_out[2])
+        //             const
+        //         {
+        //             size_t n = *((const size_t *)size_of_list_ptr);
+        //             const int *mask = (const int *)data_point_attr;
 
-        template <bool has_deletions>
-        std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>
-        searchBaseLayerST(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const bool collect_metrics = false) const
+        //             size_t i = 0;
+        //             while (i < n && mask[i] == 0)
+        //                 ++i;
+        //             size_t j = i;
+        //             while (j < n && mask[j] != 0)
+        //                 ++j;
+
+        //             range_out[0] = (int)i;       // start
+        //             range_out[1] = (int)(j - i); // len
+        //         }
+        //         // Contiguous-range aggregator: sums pVect2[start .. start+len-1]
+        //         // range_ptr points to int[2]: {start, len}. qty_ptr should point to the same len (for consistency with DISTFUNC signature)
+        //         static float
+        //         AttrAggDistContigRange(const void *range_ptr, const void *pVect2v, const void *qty_ptr)
+        //         {
+        //             const int *range = (const int *)range_ptr;
+        //             const int start = range[0];
+        //             const int len = *((const int *)qty_ptr);
+        //             const float *p = (const float *)pVect2v + start;
+
+        //             float sum = 0.0f;
+
+        // #if defined(USE_AVX512)
+        //             int i = 0;
+        //             float PORTABLE_ALIGN64 tmp[16];
+        //             __m512 acc = _mm512_set1_ps(0.0f);
+        //             for (; i + 16 <= len; i += 16)
+        //             {
+        //                 acc = _mm512_add_ps(acc, _mm512_loadu_ps(p + i));
+        //             }
+        //             _mm512_store_ps(tmp, acc);
+        //             for (int t = 0; t < 16; ++t)
+        //                 sum += tmp[t];
+        //             for (; i < len; ++i)
+        //                 sum += p[i];
+        //             return sum;
+        // #elif defined(USE_AVX)
+        //             int i = 0;
+        //             __m256 vacc = _mm256_set1_ps(0.0f);
+        //             for (; i + 8 <= len; i += 8)
+        //             {
+        //                 vacc = _mm256_add_ps(vacc, _mm256_loadu_ps(p + i));
+        //             }
+        //             float PORTABLE_ALIGN32 tmp[8];
+        //             _mm256_store_ps(tmp, vacc);
+        //             for (int t = 0; t < 8; ++t)
+        //                 sum += tmp[t];
+        //             for (; i < len; ++i)
+        //                 sum += p[i];
+        //             return sum;
+        // #elif defined(__ARM_NEON) || defined(__aarch64__)
+        //             int i = 0;
+        //             float32x4_t vacc = vdupq_n_f32(0.0f);
+        //             for (; i + 4 <= len; i += 4)
+        //             {
+        //                 float32x4_t v = vld1q_f32(p + i);
+        //                 vacc = vaddq_f32(vacc, v);
+        //             }
+        //             float32x2_t vlow = vget_low_f32(vacc);
+        //             float32x2_t vhigh = vget_high_f32(vacc);
+        //             float32x2_t vsum2 = vpadd_f32(vlow, vhigh);
+        //             sum += vget_lane_f32(vsum2, 0) + vget_lane_f32(vsum2, 1);
+        //             for (; i < len; ++i)
+        //                 sum += p[i];
+        //             return sum;
+        // #else
+        //             for (int i = 0; i < len; ++i)
+        //                 sum += p[i];
+        //             return sum;
+        // #endif
+        //         }
+        // Extract active node indices from an int mask[dim] (values 0/1).
+        // Do this ONCE per query; reuse 'out' for all candidates.
+        static inline int extract_active_indices(const int *__restrict mask,
+                                                 int dim,
+                                                 std::vector<int> &out)
         {
-            VisitedList *vl = visited_list_pool_->getFreeVisitedList();
-            vl_type *visited_array = vl->mass;
-            vl_type visited_array_tag = vl->curV;
-            std::string search_method = "dpq";
-
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>
-                top_valid_only_candidates;
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> candidate_set;
-            std::pair<dist_t, tableint> topElement;
-
-            char *currObj1Attr;
-            int distAttr;
-            bool isCandAttrAllowed;
-
-            dist_t lowerBound;
-
-            // int query_Attr_valid_index = getIndexOfFirstNonNull(data_point_attr, dist_attr_func_param_);
-            int valid_indices_count = getAllValidIndicesCount(data_point_attr, dist_attr_func_param_);
-            int *valid_indices = getAllValidIndices(data_point_attr, dist_attr_func_param_);
-            // std::cout << "query_Attr_valid_index: " << query_Attr_valid_index << std::endl;
-
-            if ((!has_deletions || !isMarkedDeleted(ep_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(ep_id))))
-            {
-
-                char *currObj1 = (getDataByInternalId(ep_id));
-
-                dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-
-                char *currObj1AttrAgg = (getDataAttrAggByInternalId(ep_id));
-                if (hybrid_factor_ > 0)
-                {
-                    dist_t distAttrAgg = fstdistattraggfunc_((void *)valid_indices, currObj1AttrAgg, (void *)&valid_indices_count);
-                    dist += hybrid_factor_ * distAttrAgg;
-                }
-
-                lowerBound = dist;
-                top_candidates.emplace(dist, ep_id);
-                candidate_set.emplace(-dist, ep_id);
-            }
-            else
-            {
-                lowerBound = std::numeric_limits<dist_t>::max();
-                candidate_set.emplace(-lowerBound, ep_id);
-            }
-
-            visited_array[ep_id] = visited_array_tag;
-
-            int nhops = 0;
-            int valid_hops = 0;
-            int dist_calculations = 0;
-            dist_t distAttrAgg;
-            std::vector<float> dist_per_q;
-
-            while (!candidate_set.empty())
-            {
-
-                std::pair<dist_t, tableint> current_node_pair = candidate_set.top();
-
-                if ((-current_node_pair.first) > lowerBound &&
-                    (top_candidates.size() == ef || (!isIdAllowed && !has_deletions)))
-                {
-                    break;
-                }
-                candidate_set.pop();
-
-                tableint current_node_id = current_node_pair.second;
-                int *data = (int *)get_linklist0(current_node_id);
-                size_t size = getListCount((linklistsizeint *)data);
-
-                if (collect_metrics)
-                {
-                    nhops++;
-                    char *currObj1Attr = (getDataAttrByInternalId(current_node_id));
-                    int distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-                    if (distAttr == 0)
-                    {
-                        valid_hops++;
-                    }
-                }
-
-#ifdef USE_SSE
-                _mm_prefetch((char *)(visited_array + *(data + 1)), _MM_HINT_T0);
-                _mm_prefetch((char *)(visited_array + *(data + 1) + 64), _MM_HINT_T0);
-                _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
-                _mm_prefetch((char *)(data + 2), _MM_HINT_T0);
-#endif
-                std::vector<float> nei_dists(size, 0.0f);
-                int visited_count = 0;
-                for (size_t j = 1; j <= size; j++)
-                {
-                    int candidate_id = *(data + j);
-//                    if (candidate_id == 0) continue;
-#ifdef USE_SSE
-                    _mm_prefetch((char *)(visited_array + *(data + j + 1)), _MM_HINT_T0);
-                    _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
-                                 _MM_HINT_T0); ////////////
-#endif
-
-                    bool pron_condition;
-                    if (hybrid_factor_ > 0)
-                    {
-                        char *currObj1AttrAgg = (getDataAttrAggByInternalId(candidate_id));
-                        distAttrAgg = fstdistattraggfunc_((void *)valid_indices, currObj1AttrAgg, (void *)&valid_indices_count);
-                        float *pVect2 = (float *)currObj1AttrAgg;
-                        pron_condition = (pVect2[valid_indices[0]] >= pron_factor_);
-                        if (valid_indices_count > 1)
-                        {
-                            pron_condition = pron_condition && (pVect2[valid_indices[1]] >= pron_factor_);
-                        }
-                    }
-                    else
-                    {
-                        distAttrAgg = 0;
-                        pron_condition = true;
-                    }
-
-                    if (!(visited_array[candidate_id] == visited_array_tag) && pron_condition)
-                    {
-                        // if (d_a < 1 and d_b < 1)
-                        // {
-                        //     std::cout << d_a << " / " << d_b << std::endl;
-                        // }
-                        visited_array[candidate_id] = visited_array_tag;
-
-                        char *currObj1 = (getDataByInternalId(candidate_id));
-
-                        dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-
-                        dist += hybrid_factor_ * distAttrAgg;
-                        if (collect_metrics)
-                        {
-                            dist_calculations++;
-                            // distance_logger.push_back(fstdistfunc_(data_point, currObj1, dist_func_param_));
-                            nei_dists.push_back(fstdistfunc_(data_point, currObj1, dist_func_param_));
-                            visited_count++;
-                        }
-
-                        if (top_candidates.size() < ef || lowerBound > dist)
-                        {
-                            candidate_set.emplace(-dist, candidate_id);
-#ifdef USE_SSE
-                            _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
-                                             offsetLevel0_, ///////////
-                                         _MM_HINT_T0);      ////////////////////////
-#endif
-
-                            if ((!has_deletions || !isMarkedDeleted(candidate_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(candidate_id))))
-                            {
-                                top_candidates.emplace(dist, candidate_id);
-                            }
-
-                            if (top_candidates.size() > ef)
-                            {
-
-                                if (search_method == "dpq")
-                                { // add poped element to top_valid_only_candidates if isCandAttrAllowed
-                                    // std::cout << "top_cand overflow ... " << nhops << std::endl;
-                                    topElement = top_candidates.top();
-                                    currObj1Attr = (getDataAttrByInternalId(topElement.second));
-                                    distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-                                    isCandAttrAllowed = (distAttr == 0);
-                                    if (isCandAttrAllowed)
-                                    {
-                                        // std::cout << "updating dpq ..." << std::endl;
-                                        top_valid_only_candidates.emplace(topElement);
-                                    }
-                                }
-
-                                top_candidates.pop();
-                            }
-
-                            if (!top_candidates.empty())
-                                lowerBound = top_candidates.top().first;
-                        }
-                    }
-                }
-                if (collect_metrics)
-                {
-                    // float stdDeviation = calculateStandardDeviation(nei_dists);
-                    // float mean_dist = calculateMean(nei_dists);
-                    // distance_logger.push_back(mean_dist);
-                    float visited_ratio = (float)visited_count / (float)size;
-                    distance_logger.push_back(visited_ratio);
-                    // distance_logger.push_back((float)nhops);
-                }
-            }
-
-            visited_list_pool_->releaseVisitedList(vl);
-            if (collect_metrics)
-            {
-                float satisfied_ratio = (float)valid_hops / (float)nhops;
-                std::cout << " dist_calculations = " << dist_calculations << std::endl;
-                std::cout << "---------------------------" << std::endl;
-                test_metrics.push_back(std::make_tuple(dist_calculations, satisfied_ratio, nhops));
-                curr_metric++;
-            }
-            // TODO - merge pqs
-            // !  check python implmt (cant reproduce recall results  - maybe adding elements to top_cand should be changed)
-
-            // std::cout << "top_candidates.size() = " << top_candidates.size() << " top_valid_only_candidates.size() = " << top_valid_only_candidates.size();
-
-            // merge pqs
-            // std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>
-            //     top_merged_candidates;
-            // return top_candidates;
-
-            // // s_n_f
-            // while (!top_candidates.empty())
-            // {
-            //     topElement = top_candidates.top();
-            //     currObj1Attr = (getDataAttrByInternalId(topElement.second));
-            //     // distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-            //     distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-            //     // distAttr = fstdistattrfunc_((void *)&query_Attr_valid_index, currObj1Attr, dist_attr_func_param_);
-            //     isCandAttrAllowed = (distAttr == 0);
-            //     if (isCandAttrAllowed)
-            //         top_valid_only_candidates.emplace(topElement);
-            //     else
-            //         top_valid_only_candidates.emplace(300000.0f + topElement.first, topElement.second);
-            //     top_candidates.pop();
-            // }
-            // return top_valid_only_candidates;
-            if (search_method == "dpq")
-            {
-                // double_pq
-                while (!top_candidates.empty())
-                {
-                    topElement = top_candidates.top();
-                    currObj1Attr = (getDataAttrByInternalId(topElement.second));
-                    // distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                    // distAttr = fstdistattrfunc_((void *)&query_Attr_valid_index, currObj1Attr, dist_attr_func_param_);
-                    distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-                    isCandAttrAllowed = (distAttr == 0);
-                    if (isCandAttrAllowed)
-                        top_valid_only_candidates.emplace(topElement);
-                    top_candidates.pop();
-                }
-                return top_valid_only_candidates;
-            }
-            if (search_method == "snf")
-            {
-                // s_n_f
-                while (!top_candidates.empty())
-                {
-                    topElement = top_candidates.top();
-                    currObj1Attr = (getDataAttrByInternalId(topElement.second));
-                    // distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                    distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-                    // distAttr = fstdistattrfunc_((void *)&query_Attr_valid_index, currObj1Attr, dist_attr_func_param_);
-                    isCandAttrAllowed = (distAttr == 0);
-                    if (isCandAttrAllowed)
-                        top_valid_only_candidates.emplace(topElement);
-                    else
-                        top_valid_only_candidates.emplace(300000.0f + topElement.first, topElement.second);
-                    top_candidates.pop();
-                }
-                return top_valid_only_candidates;
-            }
+            out.clear();
+            out.reserve(64); // dyadic cover is tiny; reserve small to avoid allocs
+            for (int i = 0; i < dim; ++i)
+                if (mask[i])
+                    out.push_back(i);
+            return (int)out.size();
         }
-        template <bool has_deletions>
-        std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis>
-        searchBaseLayerSTAttrOnly(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
+        // Sum vec[idx[i]] for i=0..k-1 (k is small).
+        static inline float sum_by_indices_f32(const float *__restrict vec,
+                                               const int *__restrict idx,
+                                               int k)
         {
+            if (k <= 0)
+                return 0.0f;
+
+#if defined(__AVX512F)
+            int i = 0;
+            __m512 acc = _mm512_setzero_ps();
+            for (; i + 16 <= k; i += 16)
+            {
+                __m512i vi = _mm512_loadu_si512((const void *)(idx + i));
+                __m512 vx = _mm512_i32gather_ps(vi, vec, 4); // 4 = sizeof(float)
+                acc = _mm512_add_ps(acc, vx);
+            }
+            float sum = _mm512_reduce_add_ps(acc);
+            for (; i < k; i++)
+                sum += vec[idx[i]];
+            return sum;
+
+#elif defined(__AVX2__)
+            int i = 0;
+            __m256 acc = _mm256_setzero_ps();
+            for (; i + 8 <= k; i += 8)
+            {
+                __m256i vi = _mm256_loadu_si256((const __m256i *)(idx + i));
+                __m256 vx = _mm256_i32gather_ps(vec, vi, 4);
+                acc = _mm256_add_ps(acc, vx);
+            }
+            // horizontal sum acc
+            __m128 lo = _mm256_castps256_ps128(acc);
+            __m128 hi = _mm256_extractf128_ps(acc, 1);
+            __m128 s = _mm_add_ps(lo, hi);
+            s = _mm_hadd_ps(s, s);
+            s = _mm_hadd_ps(s, s);
+            float sum = _mm_cvtss_f32(s);
+            for (; i < k; i++)
+                sum += vec[idx[i]];
+            return sum;
+
+#elif defined(__ARM_NEON) || defined(__aarch64__)
+            // No native gather → scalar is typically fastest for small k
+            float s0 = 0.f, s1 = 0.f, s2 = 0.f, s3 = 0.f;
+            int i = 0;
+            for (; i + 4 <= k; i += 4)
+            {
+                s0 += vec[idx[i + 0]];
+                s1 += vec[idx[i + 1]];
+                s2 += vec[idx[i + 2]];
+                s3 += vec[idx[i + 3]];
+            }
+            float sum = (s0 + s1) + (s2 + s3);
+            for (; i < k; ++i)
+                sum += vec[idx[i]];
+            return sum;
+
+#else
+            // Portable scalar (unrolled)
+            float s0 = 0.f, s1 = 0.f, s2 = 0.f, s3 = 0.f;
+            int i = 0;
+            for (; i + 4 <= k; i += 4)
+            {
+                s0 += vec[idx[i + 0]];
+                s1 += vec[idx[i + 1]];
+                s2 += vec[idx[i + 2]];
+                s3 += vec[idx[i + 3]];
+            }
+            float sum = (s0 + s1) + (s2 + s3);
+            for (; i < k; ++i)
+                sum += vec[idx[i]];
+            return sum;
+#endif
+        }
+
+        // Max(vec[idx[i]]) with early termination if any value > early_stop (default 5.0f).
+        static inline float max_by_indices_f32_early_scalar(const float *__restrict vec,
+                                                            const int *__restrict idx,
+                                                            int k,
+                                                            float early_stop = 5.0f)
+        {
+            if (k <= 0)
+                return -std::numeric_limits<float>::infinity();
+
+            float m = vec[idx[0]];
+            if (m > early_stop)
+                return m;
+
+            int i = 1;
+            // Unrolled for tiny k (dyadic cover is small)
+            for (; i + 3 < k; i += 4)
+            {
+                float v0 = vec[idx[i + 0]];
+                if (v0 > m)
+                {
+                    m = v0;
+                    if (m > early_stop)
+                        return m;
+                }
+                float v1 = vec[idx[i + 1]];
+                if (v1 > m)
+                {
+                    m = v1;
+                    if (m > early_stop)
+                        return m;
+                }
+                float v2 = vec[idx[i + 2]];
+                if (v2 > m)
+                {
+                    m = v2;
+                    if (m > early_stop)
+                        return m;
+                }
+                float v3 = vec[idx[i + 3]];
+                if (v3 > m)
+                {
+                    m = v3;
+                    if (m > early_stop)
+                        return m;
+                }
+            }
+            for (; i < k; ++i)
+            {
+                float v = vec[idx[i]];
+                if (v > m)
+                {
+                    m = v;
+                    if (m > early_stop)
+                        return m;
+                }
+            }
+            return m;
+        }
+
+        // Mask (0/1) -> active indices (writes into a stack array). Returns count.
+        static inline int extract_active_indices_stack(const int *__restrict mask,
+                                                       int dim,
+                                                       int *__restrict out,
+                                                       int out_cap)
+        {
+            int k = 0;
+            for (int i = 0; i < dim && k < out_cap; ++i)
+                if (mask[i])
+                    out[k++] = i;
+            return k;
+        }
+
+        // Final optimized BaseLayer search (uses your two helpers:
+        //  - extract_active_indices_stack()
+        //  - max_by_indices_f32_early_scalar())
+        template <bool has_deletions>
+        std::priority_queue<
+            std::pair<std::pair<dist_t, bool>, tableint>,
+            std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+            CompareByFirstBis>
+        searchBaseLayerRange(tableint ep_id,
+                             const void *data_point,
+                             size_t ef,
+                             BaseFilterFunctor *isIdAllowed = nullptr,
+                             const void *data_point_attr = nullptr, // int mask[dim_att], dyadic nodes in heap order
+                             const void *query_range = nullptr,     // optional: float [low, high]
+                             const bool collect_metrics = false) const
+        {
+            // ---------------- Visited init ----------------
             VisitedList *vl = visited_list_pool_->getFreeVisitedList();
             vl_type *visited_array = vl->mass;
             vl_type visited_array_tag = vl->curV;
-            std::string search_method = "dpq";
 
-            // Example: how to access raw range and a node's scalar label (for your implementation):
-            const float *range = (const float *)query_range; // [low, high]
-            float low = range ? range[0] : -std::numeric_limits<float>::infinity();
-            float high = range ? range[1] : std::numeric_limits<float>::infinity();
-            // float ep_scalar = getScalarLabelByInternalId(ep_id); // scalar label of entrypoint
-            // Optimized range check (early-exit, branch-friendly):
-            // const bool range_ok = !query_range || ((ep_scalar >= static_cast<const float*>(query_range)[0]) && (ep_scalar <= static_cast<const float*>(query_range)[1]));
-            // Robust bounds version (swap once if needed):
-            // const float* r = static_cast<const float*>(query_range); float lo = r? r[0] : -std::numeric_limits<float>::infinity(); float hi = r? r[1] : std::numeric_limits<float>::infinity(); if (hi < lo) std::swap(lo, hi); const bool range_ok2 = (ep_scalar >= lo) && (ep_scalar <= hi);
+            // ---------------- Range filter (optional) ----------------
+            const float *range = (const float *)query_range; // [low, high] or null
+            const float low = range ? range[0] : -std::numeric_limits<float>::infinity();
+            const float high = range ? range[1] : std::numeric_limits<float>::infinity();
 
-            std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis>
-                top_valid_only_candidates;
-            std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis> top_candidates;
-            std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis> candidate_set;
-            std::pair<std::pair<dist_t, bool>, tableint> topElement;
+            // ---------------- PQs ----------------
+            std::priority_queue<
+                std::pair<std::pair<dist_t, bool>, tableint>,
+                std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+                CompareByFirstBis>
+                top_valid_only_candidates; // returned (only items passing range filter)
 
-            char *currObj1Attr;
-            int distAttr;
-            dist_t distAttrAgg;
-            bool isCandAttrAllowed;
+            std::priority_queue<
+                std::pair<std::pair<dist_t, bool>, tableint>,
+                std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+                CompareByFirstBis>
+                top_candidates; // mixed; we carry a 'valid' flag next to distance
 
-            dist_t lowerBound;
-            int valid_indices_count = getAllValidIndicesCount(data_point_attr, dist_attr_func_param_);
-            int *valid_indices = getAllValidIndices(data_point_attr, dist_attr_func_param_);
-            // std::cout << "valid_indices_count: " << valid_indices_count << std::endl;
-            // std::cout << "valid_indices: " << valid_indices << std::endl;
-            char *currObj1 = (getDataByInternalId(ep_id));
+            std::priority_queue<
+                std::pair<std::pair<dist_t, bool>, tableint>,
+                std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+                CompareByFirstBis>
+                candidate_set; // frontier; stores (-dist) so top() is best (min-heap emulation)
 
-            dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
+            // ---------------- Query mask -> active indices (once) ----------------
+            const int *query_mask = (const int *)data_point_attr;
+            const int dim_att = *((int *)dist_attr_func_param_); // your stored attribute dimension
 
-            char *currObj1AttrAgg = (getDataAttrAggByInternalId(ep_id));
-            distAttrAgg = fstdistattraggfunc_((void *)valid_indices, currObj1AttrAgg, (void *)&valid_indices_count);
-            if (hybrid_factor_ > 0)
-            {
-                dist -= hybrid_factor_ * (distAttrAgg > 5 ? distAttrAgg - 5 : distAttrAgg);
-            }
+            // Stack buffer (no heap); 32 is generous for dyadic covers (~few actives).
+            int active_idx[16];
+            const int k_active = extract_active_indices_stack(query_mask, dim_att, active_idx, 16);
 
-            lowerBound = dist;
-            float cand_scalar = getScalarLabelByInternalId(ep_id);
-            top_candidates.emplace(std::make_pair(dist, (cand_scalar >= low) && (cand_scalar <= high)), ep_id);
+            // ---------------- Seed with entry point ----------------
+            char *ep_data = getDataByInternalId(ep_id);
+            dist_t dist = fstdistfunc_(data_point, ep_data, dist_func_param_);
+
+            dist_t lowerBound = dist;
+            const float ep_scalar = getScalarLabelByInternalId(ep_id);
+            top_candidates.emplace(std::make_pair(dist, (ep_scalar >= low && ep_scalar <= high)), ep_id);
             candidate_set.emplace(std::make_pair(-dist, true), ep_id);
-
             visited_array[ep_id] = visited_array_tag;
 
-            int nhops = 0;
-            int point_attr_eval = 0;
-            int valid_hops = 0;
-            int dist_calculations = 0;
+            // ---------------- Metrics ----------------
+            int nhops = 0, point_attr_eval = 0, dist_calculations = 0;
 
-            // std::vector<float> dist_per_q;
-
+            // ---------------- Main loop ----------------
             while (!candidate_set.empty())
             {
+                auto current = candidate_set.top();
 
-                std::pair<std::pair<dist_t, bool>, tableint> current_node_pair = candidate_set.top();
-
-                // if ((-current_node_pair.first.first) > lowerBound &&
-                //     (top_candidates.size() == ef || (!isIdAllowed && !has_deletions)))
-                if ((-current_node_pair.first.first) > lowerBound && top_candidates.size() == ef)
-                {
+                // Early exit if best possible candidate from frontier is already worse than LB and we have ef items
+                if ((-current.first.first) > lowerBound && top_candidates.size() == ef)
                     break;
-                }
+
                 candidate_set.pop();
+                const tableint curr_id = current.second;
 
-                tableint current_node_id = current_node_pair.second;
-                int *data = (int *)get_linklist0(current_node_id);
-                size_t size = getListCount((linklistsizeint *)data);
+                int *ll = (int *)get_linklist0(curr_id);
+                size_t degree = getListCount((linklistsizeint *)ll);
                 if (collect_metrics)
-                {
                     nhops++;
-                }
 
 #ifdef USE_SSE
-                _mm_prefetch((char *)(visited_array + *(data + 1)), _MM_HINT_T0);
-                _mm_prefetch((char *)(visited_array + *(data + 1) + 64), _MM_HINT_T0);
-                _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
-                _mm_prefetch((char *)(data + 2), _MM_HINT_T0);
+                _mm_prefetch((char *)(visited_array + *(ll + 1)), _MM_HINT_T0);
+                _mm_prefetch((char *)(visited_array + *(ll + 1) + 64), _MM_HINT_T0);
+                _mm_prefetch(data_level0_memory_ + (*(ll + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+                _mm_prefetch(data_attr_agg_memory_ + (*(ll + 1)) * size_data_attr_agg_per_element_, _MM_HINT_T0);
+                _mm_prefetch((char *)(ll + 2), _MM_HINT_T0);
 #endif
-                // std::vector<float> nei_dists(size, 0.0f);
-                int visited_count = 0;
-                for (size_t j = 1; j <= size; j++)
+
+                for (size_t j = 1; j <= degree; j++)
                 {
-                    int candidate_id = *(data + j);
-//                    if (candidate_id == 0) continue;
+                    const int cand_id = *(ll + j);
+
 #ifdef USE_SSE
-                    _mm_prefetch((char *)(visited_array + *(data + j + 1)), _MM_HINT_T0);
-                    _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
-                                 _MM_HINT_T0); ////////////
+                    _mm_prefetch((char *)(visited_array + *(ll + j + 1)), _MM_HINT_T0);
+                    _mm_prefetch(data_level0_memory_ + (*(ll + j + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+                    _mm_prefetch(data_attr_agg_memory_ + (*(ll + j + 1)) * size_data_attr_agg_per_element_, _MM_HINT_T0);
 #endif
+                    // visited: mark once, immediately
+                    if (visited_array[cand_id] == visited_array_tag)
+                        continue;
+                    visited_array[cand_id] = visited_array_tag;
 
-                    bool is_not_visited = !(visited_array[candidate_id] == visited_array_tag);
-                    bool node_to_probe = is_not_visited;
-                    // if (hybrid_factor_ > 0)
-                    // {
+                    // optional external filter
+                    if (isIdAllowed && !(*isIdAllowed)(cand_id))
+                        continue;
 
-                    // if (is_not_visited)
-                    // {
-                    // distAttrAgg = fstdistattraggfunc_(query_label, mapRefs.find(candidate_id)->second);
+                    // --- cheap attribute gate first (if enabled) ---
+                    bool probe = true;
+                    float cand_attr_max = 0.0f;
 
-                    if (pron_factor_ != -1 && is_not_visited)
+                    if (pron_factor_ != -1)
                     {
-                        char *currObj1AttrAgg = (getDataAttrAggByInternalId(candidate_id));
-                        distAttrAgg = fstdistattraggfunc_((void *)valid_indices, currObj1AttrAgg, (void *)&valid_indices_count);
-                        node_to_probe = node_to_probe && (distAttrAgg / valid_indices_count >= pron_factor_);
-                        visited_array[candidate_id] = visited_array_tag;
-
+                        const float *candAttr = (const float *)getDataAttrAggByInternalId(cand_id);
+                        cand_attr_max = max_by_indices_f32_early_scalar(candAttr, active_idx, k_active, /*early_stop=*/5.0f);
                         if (collect_metrics)
-                        {
                             point_attr_eval++;
-                        }
+                        if (cand_attr_max < pron_factor_)
+                            continue; // prune early
                     }
-                    // std::cout << "pron_factor_ = " << pron_factor_ << std::endl;
-                    // std::cout << "node_to_probe = " << node_to_probe << std::endl;
-                    // std::cout << "distAttrAgg = " << distAttrAgg << std::endl;
-                    // std::cout << "valid_indices_count = " << valid_indices_count << std::endl;
-                    // std::cout << "--------------------------------" << std::endl;
-                    if (node_to_probe)
+
+                    // --- expensive vector distance only if passing the gate ---
+                    char *cand_data = getDataByInternalId(cand_id);
+                    dist_t d = fstdistfunc_(data_point, cand_data, dist_func_param_);
+                    // if (hybrid_factor_ > 0 && k_active > 0)
+                    // {
+                    //     const dist_t adj = (cand_attr_max > 5) ? (cand_attr_max - 5) : cand_attr_max;
+                    //     d -= hybrid_factor_ * adj;
+                    // }
+                    if (collect_metrics)
+                        dist_calculations++;
+
+                    if (top_candidates.size() < ef || lowerBound > d)
                     {
-                        // visited_array[candidate_id] = visited_array_tag;
-                        // Example: scalar label of a candidate node (use in your logic):
-                        // float cand_scalar = getScalarLabelByInternalId(candidate_id);
-                        char *currObj1 = (getDataByInternalId(candidate_id));
-
-                        dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-                        if (hybrid_factor_ > 0)
-                            dist -= hybrid_factor_ * (distAttrAgg > 5 ? distAttrAgg - 5 : distAttrAgg);
-
-                        // std::cout << "dist = " << dist << std::endl;
-                        // std::cout << "distAttrAgg = " << distAttrAgg << " normed = " << (distAttrAgg > 5 ? distAttrAgg - 5 : distAttrAgg) << std::endl;
-                        if (collect_metrics)
-                        {
-                            dist_calculations++;
-                            // nei_dists.push_back(fstdistfunc_(data_point, currObj1, dist_func_param_));
-                            // visited_count++;
-                        }
-
-                        if (top_candidates.size() < ef || lowerBound > dist)
-                        {
-                            candidate_set.emplace(std::make_pair(-dist, true), candidate_id);
+                        candidate_set.emplace(std::make_pair(-d, true), cand_id);
 #ifdef USE_SSE
-                            _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
-                                             offsetLevel0_, ///////////
-                                         _MM_HINT_T0);      ////////////////////////
+                        _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ + offsetLevel0_, _MM_HINT_T0);
+                        _mm_prefetch(data_attr_agg_memory_ + candidate_set.top().second * size_data_attr_agg_per_element_, _MM_HINT_T0);
 #endif
+                        const float cscalar = getScalarLabelByInternalId(cand_id);
+                        top_candidates.emplace(std::make_pair(d, (cscalar >= low && cscalar <= high)), cand_id);
 
-                            float cand_scalar = getScalarLabelByInternalId(candidate_id); // scalar label of candidate
-                            top_candidates.emplace(std::make_pair(dist, ((cand_scalar >= low) && (cand_scalar <= high))), candidate_id);
+                        if (top_candidates.size() > ef)
+                        {
 
-                            if (top_candidates.size() > ef)
+                            auto poped_item = top_candidates.top(); // trim only; don't duplicate into valid-only queue here
+                            top_candidates.pop();
+                            if (poped_item.first.second)
                             {
-
-                                if (search_method == "dpq")
-                                {
-                                    topElement = top_candidates.top();
-
-                                    if (topElement.first.second)
-                                        top_valid_only_candidates.emplace(topElement);
-                                }
-
-                                top_candidates.pop();
+                                top_valid_only_candidates.emplace(poped_item);
                             }
-
-                            if (!top_candidates.empty())
-                                lowerBound = top_candidates.top().first.first;
                         }
+                        if (!top_candidates.empty())
+                            lowerBound = top_candidates.top().first.first;
                     }
                 }
+
                 if (collect_metrics)
                 {
-
-                    // float visited_ratio = (float)visited_count / (float)size;
                     distance_logger.push_back(dist_calculations);
                 }
             }
 
             visited_list_pool_->releaseVisitedList(vl);
+
             if (collect_metrics)
             {
                 test_metrics.push_back(std::make_tuple(dist_calculations, point_attr_eval, nhops));
-
                 curr_metric++;
             }
 
-            if (search_method == "dpq")
-            {
-
-                // double_pq
-                while (!top_candidates.empty())
-                {
-                    topElement = top_candidates.top();
-                    // std::cout << "  (dist=" << topElement.first.first << ", is_valid=" << topElement.first.second
-                    //           << ") id=" << topElement.second << std::endl;
-                    if (topElement.first.second)
-                    {
-                        top_valid_only_candidates.emplace(topElement);
-                    }
-                    top_candidates.pop();
-                }
-                return top_valid_only_candidates;
-            }
-            if (search_method == "snf")
-            {
-                // s_n_f : search then filter
-                while (!top_candidates.empty())
-                {
-                    topElement = top_candidates.top();
-                    // distAttr = fstdistattrfunc_((void *)valid_indices, (void *)&valid_indices_count, mapRefs.find(topElement.second)->second);
-                    // isCandAttrAllowed = (distAttr == 0);
-                    if (topElement.first.second)
-                        top_valid_only_candidates.emplace(topElement);
-                    else
-                        top_valid_only_candidates.emplace(std::make_pair(300000.0f + topElement.first.first, false), topElement.second);
-                    top_candidates.pop();
-                }
-                return top_valid_only_candidates;
-            }
-        }
-        template <bool has_deletions>
-        std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>
-        searchBaseLayerSTFpq(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
-        {
-            VisitedList *vl = visited_list_pool_->getFreeVisitedList();
-            vl_type *visited_array = vl->mass;
-            vl_type visited_array_tag = vl->curV;
-
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> candidate_set;
-
-            dist_t lowerBound;
-            float dist_comp = 0;
-
-            // int query_Attr_valid_index = getIndexOfFirstNonNull(data_point_attr, dist_attr_func_param_);
-            int valid_indices_count = getAllValidIndicesCount(data_point_attr, dist_attr_func_param_);
-            int *valid_indices = getAllValidIndices(data_point_attr, dist_attr_func_param_);
-            if ((!has_deletions || !isMarkedDeleted(ep_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(ep_id))))
-            {
-                dist_t dist = fstdistfunc_(data_point, getDataByInternalId(ep_id), dist_func_param_);
-                lowerBound = dist;
-                top_candidates.emplace(dist, ep_id);
-                candidate_set.emplace(-dist, ep_id);
-            }
-            else
-            {
-                lowerBound = std::numeric_limits<dist_t>::max();
-                candidate_set.emplace(-lowerBound, ep_id);
-            }
-
-            visited_array[ep_id] = visited_array_tag;
-
-            int nhops = 0;
-            int valid_hops = 0;
-            int attr_eval_points = 0;
-
-            while (!candidate_set.empty())
-            {
-
-                std::pair<dist_t, tableint> current_node_pair = candidate_set.top();
-
-                if ((-current_node_pair.first) > lowerBound &&
-                    (top_candidates.size() == ef || (!isIdAllowed && !has_deletions)))
-                {
-                    break;
-                }
-                candidate_set.pop();
-
-                tableint current_node_id = current_node_pair.second;
-                int *data = (int *)get_linklist0(current_node_id);
-                size_t size = getListCount((linklistsizeint *)data);
-                //                bool cur_node_deleted = isMarkedDeleted(current_node_id);
-                // if (collect_metrics)
-                // {
-                //     char *currObj1Attr = (getDataAttrByInternalId(candidate_id));
-                //     int distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                //     if (distAttr != 1)
-                //     {
-                //         valid_hops++;
-                //     }
-                // }
-                if (collect_metrics)
-                {
-                    nhops++;
-                    // metric_distance_computations += size;
-                    char *currObj1Attr = (getDataAttrByInternalId(current_node_id));
-                    // int distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                    // int distAttr = fstdistattrfunc_((void *)&query_Attr_valid_index, currObj1Attr, dist_attr_func_param_);
-                    int distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-                    // if (distAttr == 0)
-                    // {
-                    //     valid_hops++;
-                    // }
-                }
-
-#ifdef USE_SSE
-                _mm_prefetch((char *)(visited_array + *(data + 1)), _MM_HINT_T0);
-                _mm_prefetch((char *)(visited_array + *(data + 1) + 64), _MM_HINT_T0);
-                _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
-                _mm_prefetch((char *)(data + 2), _MM_HINT_T0);
-#endif
-
-                for (size_t j = 1; j <= size; j++)
-                {
-                    int candidate_id = *(data + j);
-//                    if (candidate_id == 0) continue;
-#ifdef USE_SSE
-                    _mm_prefetch((char *)(visited_array + *(data + j + 1)), _MM_HINT_T0);
-                    _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
-                                 _MM_HINT_T0); ////////////
-#endif
-                    if (!(visited_array[candidate_id] == visited_array_tag))
-                    {
-                        visited_array[candidate_id] = visited_array_tag;
-
-                        char *currObj1 = (getDataByInternalId(candidate_id));
-                        dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-
-                        if (collect_metrics)
-                        {
-                            attr_eval_points++;
-                            dist_comp = dist_comp + 1.0f;
-                        }
-
-                        // std::cout << "dist_vect = " << dist << "/ dist_attr =" << distAttr << std::endl;
-                        char *currObj1Attr = (getDataAttrByInternalId(candidate_id));
-                        // int distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                        // int distAttr = fstdistattrfunc_((void *)&query_Attr_valid_index, currObj1Attr, dist_attr_func_param_);
-                        int distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-                        bool isCandAttrAllowed = (distAttr == 0);
-                        if (top_candidates.size() < ef || lowerBound > dist)
-                        {
-                            candidate_set.emplace(-dist, candidate_id);
-#ifdef USE_SSE
-                            _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
-                                             offsetLevel0_, ///////////
-                                         _MM_HINT_T0);      ////////////////////////
-#endif
-
-                            if ((!has_deletions || !isMarkedDeleted(candidate_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(candidate_id))) && isCandAttrAllowed)
-                                top_candidates.emplace(dist, candidate_id);
-
-                            if (top_candidates.size() > ef)
-                                top_candidates.pop();
-
-                            if (!top_candidates.empty())
-                                lowerBound = top_candidates.top().first;
-                        }
-                    }
-                }
-            }
-
-            visited_list_pool_->releaseVisitedList(vl);
-            if (collect_metrics)
-            {
-                float satisfied_ratio = (float)valid_hops / (float)nhops;
-                // std::cout << "nhops = " << nhops << " valid_hops = " << valid_hops << " satisfied_ratio = " << satisfied_ratio << std::endl;
-                // test_metrics.push_back(std::make_pair(nhops, (float)dist_comp));
-                test_metrics.push_back(std::make_tuple(dist_comp, attr_eval_points, nhops));
-                distance_logger.push_back(dist_comp);
-                curr_metric++;
-            }
-            return top_candidates;
-        }
-        template <bool has_deletions>
-        std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>
-        searchBaseLayerSTSnfRobust(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
-        {
-            VisitedList *vl = visited_list_pool_->getFreeVisitedList();
-            vl_type *visited_array = vl->mass;
-            vl_type visited_array_tag = vl->curV;
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates_valid_only;
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> candidate_set;
-
-            dist_t lowerBound;
-            float dist_comp = 0;
-
-            // int query_Attr_valid_index = getIndexOfFirstNonNull(data_point_attr, dist_attr_func_param_);
-            int valid_indices_count = getAllValidIndicesCount(data_point_attr, dist_attr_func_param_);
-            int *valid_indices = getAllValidIndices(data_point_attr, dist_attr_func_param_);
-            if ((!has_deletions || !isMarkedDeleted(ep_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(ep_id))))
-            {
-                dist_t dist = fstdistfunc_(data_point, getDataByInternalId(ep_id), dist_func_param_);
-                lowerBound = dist;
-                top_candidates.emplace(dist, ep_id);
-                candidate_set.emplace(-dist, ep_id);
-            }
-            else
-            {
-                lowerBound = std::numeric_limits<dist_t>::max();
-                candidate_set.emplace(-lowerBound, ep_id);
-            }
-
-            visited_array[ep_id] = visited_array_tag;
-
-            int nhops = 0;
-            int valid_hops = 0;
-
-            while (!candidate_set.empty())
-            {
-
-                std::pair<dist_t, tableint> current_node_pair = candidate_set.top();
-
-                if ((-current_node_pair.first) > lowerBound &&
-                    (top_candidates.size() == ef || (!isIdAllowed && !has_deletions)))
-                {
-                    break;
-                }
-                candidate_set.pop();
-
-                tableint current_node_id = current_node_pair.second;
-                int *data = (int *)get_linklist0(current_node_id);
-                size_t size = getListCount((linklistsizeint *)data);
-                //                bool cur_node_deleted = isMarkedDeleted(current_node_id);
-                // if (collect_metrics)
-                // {
-                //     char *currObj1Attr = (getDataAttrByInternalId(candidate_id));
-                //     int distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                //     if (distAttr != 1)
-                //     {
-                //         valid_hops++;
-                //     }
-                // }
-                if (collect_metrics)
-                {
-                    nhops++;
-                    // metric_distance_computations += size;
-                    char *currObj1Attr = (getDataAttrByInternalId(current_node_id));
-                    // int distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                    // int distAttr = fstdistattrfunc_((void *)&query_Attr_valid_index, currObj1Attr, dist_attr_func_param_);
-                    int distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-                    if (distAttr == 0)
-                    {
-                        valid_hops++;
-                    }
-                }
-
-#ifdef USE_SSE
-                _mm_prefetch((char *)(visited_array + *(data + 1)), _MM_HINT_T0);
-                _mm_prefetch((char *)(visited_array + *(data + 1) + 64), _MM_HINT_T0);
-                _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
-                _mm_prefetch((char *)(data + 2), _MM_HINT_T0);
-#endif
-
-                for (size_t j = 1; j <= size; j++)
-                {
-                    int candidate_id = *(data + j);
-//                    if (candidate_id == 0) continue;
-#ifdef USE_SSE
-                    _mm_prefetch((char *)(visited_array + *(data + j + 1)), _MM_HINT_T0);
-                    _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
-                                 _MM_HINT_T0); ////////////
-#endif
-                    if (!(visited_array[candidate_id] == visited_array_tag))
-                    {
-                        visited_array[candidate_id] = visited_array_tag;
-
-                        char *currObj1 = (getDataByInternalId(candidate_id));
-                        dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-
-                        if (collect_metrics)
-                        {
-                            // char *currObj1Attr = (getDataAttrByInternalId(candidate_id));
-                            // int distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                            // if (distAttr != 1)
-                            // {
-                            //     valid_hops++;
-                            // }
-                            dist_comp = dist_comp + 1.0f;
-                        }
-
-                        // std::cout << "dist_vect = " << dist << "/ dist_attr =" << distAttr << std::endl;
-
-                        if (top_candidates.size() < ef || lowerBound > dist)
-                        {
-                            candidate_set.emplace(-dist, candidate_id);
-#ifdef USE_SSE
-                            _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
-                                             offsetLevel0_, ///////////
-                                         _MM_HINT_T0);      ////////////////////////
-#endif
-
-                            if ((!has_deletions || !isMarkedDeleted(candidate_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(candidate_id))))
-                                top_candidates.emplace(dist, candidate_id);
-
-                            if (top_candidates.size() > ef)
-                                top_candidates.pop();
-
-                            if (!top_candidates.empty())
-                                lowerBound = top_candidates.top().first;
-                        }
-                    }
-                }
-            }
-
-            visited_list_pool_->releaseVisitedList(vl);
-            if (collect_metrics)
-            {
-                float satisfied_ratio = (float)valid_hops / (float)nhops;
-                // std::cout << "nhops = " << nhops << " valid_hops = " << valid_hops << " satisfied_ratio = " << satisfied_ratio << std::endl;
-                // test_metrics.push_back(std::make_pair(nhops, (float)dist_comp));
-                test_metrics.push_back(std::make_tuple(dist_comp, satisfied_ratio, nhops));
-                distance_logger.push_back(dist_comp);
-                curr_metric++;
-            }
-
-            // s_n_f : search then filter
-
-            int k_prime = 100;
-            while (top_candidates.size() > k_prime)
-            {
-                top_candidates.pop();
-            }
+            // -------- Build final valid-only queue once (filter by scalar range) --------
             while (!top_candidates.empty())
             {
-                auto topElement = top_candidates.top();
-                char *currObj1Attr = (getDataAttrByInternalId(topElement.second));
-                int distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-                bool isCandAttrAllowed = (distAttr == 0);
-                if (isCandAttrAllowed)
-                    top_candidates_valid_only.emplace(topElement);
+                auto t = top_candidates.top();
+                if (t.first.second)
+                    top_valid_only_candidates.emplace(t);
                 top_candidates.pop();
             }
-            return top_candidates_valid_only;
-            // return top_candidates;
+            return top_valid_only_candidates;
         }
-        template <bool has_deletions>
-        std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>
-        searchBaseLayerSTSnf(tableint ep_id, const void *data_point, size_t ef, BaseFilterFunctor *isIdAllowed = nullptr, const void *data_point_attr = nullptr, const void *query_range = nullptr, const bool collect_metrics = false) const
-        {
-            VisitedList *vl = visited_list_pool_->getFreeVisitedList();
-            vl_type *visited_array = vl->mass;
-            vl_type visited_array_tag = vl->curV;
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates_valid_only;
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> candidate_set;
 
-            dist_t lowerBound;
-            float dist_comp = 0;
-
-            // int query_Attr_valid_index = getIndexOfFirstNonNull(data_point_attr, dist_attr_func_param_);
-            int valid_indices_count = getAllValidIndicesCount(data_point_attr, dist_attr_func_param_);
-            int *valid_indices = getAllValidIndices(data_point_attr, dist_attr_func_param_);
-            if ((!has_deletions || !isMarkedDeleted(ep_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(ep_id))))
-            {
-                dist_t dist = fstdistfunc_(data_point, getDataByInternalId(ep_id), dist_func_param_);
-                lowerBound = dist;
-                top_candidates.emplace(dist, ep_id);
-                candidate_set.emplace(-dist, ep_id);
-            }
-            else
-            {
-                lowerBound = std::numeric_limits<dist_t>::max();
-                candidate_set.emplace(-lowerBound, ep_id);
-            }
-
-            visited_array[ep_id] = visited_array_tag;
-
-            int nhops = 0;
-            int valid_hops = 0;
-
-            while (!candidate_set.empty())
-            {
-
-                std::pair<dist_t, tableint> current_node_pair = candidate_set.top();
-
-                if ((-current_node_pair.first) > lowerBound &&
-                    (top_candidates.size() == ef || (!isIdAllowed && !has_deletions)))
-                {
-                    break;
-                }
-                candidate_set.pop();
-
-                tableint current_node_id = current_node_pair.second;
-                int *data = (int *)get_linklist0(current_node_id);
-                size_t size = getListCount((linklistsizeint *)data);
-                //                bool cur_node_deleted = isMarkedDeleted(current_node_id);
-                // if (collect_metrics)
-                // {
-                //     char *currObj1Attr = (getDataAttrByInternalId(candidate_id));
-                //     int distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                //     if (distAttr != 1)
-                //     {
-                //         valid_hops++;
-                //     }
-                // }
-                if (collect_metrics)
-                {
-                    nhops++;
-                    // metric_distance_computations += size;
-                    char *currObj1Attr = (getDataAttrByInternalId(current_node_id));
-                    // int distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                    // int distAttr = fstdistattrfunc_((void *)&query_Attr_valid_index, currObj1Attr, dist_attr_func_param_);
-                    int distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-                    if (distAttr == 0)
-                    {
-                        valid_hops++;
-                    }
-                }
-
-#ifdef USE_SSE
-                _mm_prefetch((char *)(visited_array + *(data + 1)), _MM_HINT_T0);
-                _mm_prefetch((char *)(visited_array + *(data + 1) + 64), _MM_HINT_T0);
-                _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
-                _mm_prefetch((char *)(data + 2), _MM_HINT_T0);
-#endif
-
-                for (size_t j = 1; j <= size; j++)
-                {
-                    int candidate_id = *(data + j);
-//                    if (candidate_id == 0) continue;
-#ifdef USE_SSE
-                    _mm_prefetch((char *)(visited_array + *(data + j + 1)), _MM_HINT_T0);
-                    _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
-                                 _MM_HINT_T0); ////////////
-#endif
-                    if (!(visited_array[candidate_id] == visited_array_tag))
-                    {
-                        visited_array[candidate_id] = visited_array_tag;
-
-                        char *currObj1 = (getDataByInternalId(candidate_id));
-                        dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-
-                        if (collect_metrics)
-                        {
-                            // char *currObj1Attr = (getDataAttrByInternalId(candidate_id));
-                            // int distAttr = fstdistattrfunc_(data_point_attr, currObj1Attr, dist_attr_func_param_);
-                            // if (distAttr != 1)
-                            // {
-                            //     valid_hops++;
-                            // }
-                            dist_comp = dist_comp + 1.0f;
-                        }
-
-                        // std::cout << "dist_vect = " << dist << "/ dist_attr =" << distAttr << std::endl;
-
-                        if (top_candidates.size() < ef || lowerBound > dist)
-                        {
-                            candidate_set.emplace(-dist, candidate_id);
-#ifdef USE_SSE
-                            _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
-                                             offsetLevel0_, ///////////
-                                         _MM_HINT_T0);      ////////////////////////
-#endif
-
-                            if ((!has_deletions || !isMarkedDeleted(candidate_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(candidate_id))))
-                                top_candidates.emplace(dist, candidate_id);
-
-                            if (top_candidates.size() > ef)
-                                top_candidates.pop();
-
-                            if (!top_candidates.empty())
-                                lowerBound = top_candidates.top().first;
-                        }
-                    }
-                }
-            }
-
-            visited_list_pool_->releaseVisitedList(vl);
-            if (collect_metrics)
-            {
-                float satisfied_ratio = (float)valid_hops / (float)nhops;
-                // std::cout << "nhops = " << nhops << " valid_hops = " << valid_hops << " satisfied_ratio = " << satisfied_ratio << std::endl;
-                // test_metrics.push_back(std::make_pair(nhops, (float)dist_comp));
-                test_metrics.push_back(std::make_tuple(dist_comp, satisfied_ratio, nhops));
-                distance_logger.push_back(dist_comp);
-                curr_metric++;
-            }
-
-            // s_n_f : search then filter
-
-            // int k_prime = 100;
-            // while (top_candidates.size() > k_prime)
-            // {
-            //     top_candidates.pop();
-            // }
-            // while (!top_candidates.empty())
-            // {
-            //     auto topElement = top_candidates.top();
-            //     char *currObj1Attr = (getDataAttrByInternalId(topElement.second));
-            //     int distAttr = fstdistattrfunc_((void *)valid_indices, currObj1Attr, (void *)&valid_indices_count);
-            //     bool isCandAttrAllowed = (distAttr == 0);
-            //     if (isCandAttrAllowed)
-            //         top_candidates_valid_only.emplace(topElement);
-            //     top_candidates.pop();
-            // }
-            // return top_candidates_valid_only;
-            return top_candidates;
-        }
         std::vector<tableint>
         getGraphWalk(tableint start_node, int walk_length) const
         {
@@ -2781,16 +2246,9 @@ namespace hnswlib
             if (cur_element_count == 0)
                 return result;
 
-            // int valid_indices_count = getAllValidIndicesCount(query_data_attr, dist_attr_func_param_);
-            // int *valid_indices = getAllValidIndices(query_data_attr, dist_attr_func_param_);
-
             tableint currObj = enterpoint_node_;
             dist_t curdist = fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
 
-            // char *currObj1AttrAgg = (getDataAttrAggByInternalId(enterpoint_node_));
-            // dist_t distAttrAgg = fstdistattraggfunc_((void *)valid_indices, currObj1AttrAgg, (void *)&valid_indices_count);
-            // curdist += hybrid_factor_ * distAttrAgg;
-            // std::cout << "maxlevel_: " << maxlevel_ << std::endl;
             for (int level = maxlevel_; level > 0; level--)
             {
 
@@ -2824,49 +2282,17 @@ namespace hnswlib
                 }
             }
 
-            if (search_mode == 0)
-            {
-                std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis> top_candidates;
-                top_candidates = searchBaseLayerSTAttrOnly<false>(
-                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, query_range, collect_metrics);
-                while (top_candidates.size() > k)
-                {
-                    top_candidates.pop();
-                }
-                while (top_candidates.size() > 0)
-                {
-                    std::pair<std::pair<dist_t, bool>, tableint> rez = top_candidates.top();
-                    result.push(std::pair<dist_t, labeltype>(rez.first.first, getExternalLabel(rez.second)));
-                    top_candidates.pop();
-                }
-                return result;
-            }
-
-            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
-            if (search_mode == 1)
-            {
-                top_candidates = searchBaseLayerSTFpq<false>(
-                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, query_range, collect_metrics);
-            }
-
-            if (search_mode == 2)
-            {
-                top_candidates = searchBaseLayerSTSnf<false>(
-                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, query_range, collect_metrics);
-            }
-            if (search_mode == 3)
-            {
-                top_candidates = searchBaseLayerSTSnfRobust<false>(
-                    currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, query_range, collect_metrics);
-            }
+            std::priority_queue<std::pair<std::pair<dist_t, bool>, tableint>, std::vector<std::pair<std::pair<dist_t, bool>, tableint>>, CompareByFirstBis> top_candidates;
+            top_candidates = searchBaseLayerRange<false>(
+                currObj, query_data, std::max(k, ef_), isIdAllowed, query_data_attr, query_range, collect_metrics);
             while (top_candidates.size() > k)
             {
                 top_candidates.pop();
             }
             while (top_candidates.size() > 0)
             {
-                std::pair<dist_t, tableint> rez = top_candidates.top();
-                result.push(std::pair<dist_t, labeltype>(rez.first, getExternalLabel(rez.second)));
+                std::pair<std::pair<dist_t, bool>, tableint> rez = top_candidates.top();
+                result.push(std::pair<dist_t, labeltype>(rez.first.first, getExternalLabel(rez.second)));
                 top_candidates.pop();
             }
             return result;

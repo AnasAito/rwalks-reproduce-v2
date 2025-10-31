@@ -1,3 +1,4 @@
+import h5py
 import hnswlib
 import faiss
 import hashlib
@@ -5,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import time
 import pandas as pd
-BASE_DIR = "/data/anas.aitaomar/sift"
+BASE_DIR = "/data/anas.aitaomar/foodvec_v2"
 DATA_LIMIT = 1_001_000
 QUERY_SAMPLE_SIZE = 1000
 LABEL_MIN = 1
@@ -19,7 +20,7 @@ BASE_PATH = Path(__file__).resolve().parent.parent
 CACHE_DIR = BASE_PATH / ".cache"
 
 # Encoding choice (single toggle)
-USE_BINARY_BUCKETING = False
+USE_BINARY_BUCKETING = True
 
 # HNSW index/search params (rwalks)
 HNSW_M = 16
@@ -380,9 +381,33 @@ def recall_at_k(retrieved_list, ground_truth: np.ndarray) -> float:
     return float(np.mean(recalls)) if recalls else 0.0
 
 
+def read_hdf5_dataset(filepath, keys):
+    with h5py.File(filepath, "r") as f:
+        ret = []
+        for k in keys:
+            ret.append(f[k][:])
+    return ret
+
+
 if __name__ == "__main__":
+    # data_unify_path = "/data/anas.aitaomar/foodvec_v2/unify_store/foodvec_v2_with_scalar.hdf5"
+    # data_unify_path = "/data/anas.aitaomar/sift/unify_store/sift-128-euclidean_with_scalar.hdf5"
+    # data_unify_path = "/home/anas.aitaomar/sift/unify_store/sift50M_with_scalar.hdf5"
+    # data_unify_path = "/home/anas.aitaomar/sift/unify_store/sift10M_with_scalar.hdf5"
+    # data_unify_path = "/home/anas.aitaomar/sift/unify_store/sift-128-euclidean_with_scalar.hdf5"
+    data_unify_path = "/home/anas.aitaomar/sift/unify_store/sift25M_with_scalar.hdf5"
+    (
+        train_data,
+        train_labels,
+        query_data,
+        ranges,
+        test_hybrid_knn,
+    ) = read_hdf5_dataset(
+        data_unify_path,
+        ["base", "base_scalars", "test", "test_ranges", "test_hybrid_knn"],
+    )
     # 1) Data generation
-    train_data, query_data = load_data(DATA_LIMIT, QUERY_SAMPLE_SIZE)
+    # train_data, query_data = load_data(DATA_LIMIT, QUERY_SAMPLE_SIZE)
 
     # Centralized caching for labels, ranges, and encodings
     CACHE_DIR.mkdir(exist_ok=True)
@@ -403,10 +428,12 @@ if __name__ == "__main__":
         train_labels = np.load(labels_path)
         ranges = np.load(ranges_path)
     else:
-        train_labels = generate_labels(
-            train_data.shape[0], LABEL_MIN, LABEL_MAX)
-        ranges = generate_ranges(
-            query_data.shape[0], SELECTIVITY_LOW, SELECTIVITY_HIGH, LABEL_MIN, LABEL_MAX)
+        # train_labels = generate_labels(
+        #     train_data.shape[0], LABEL_MIN, LABEL_MAX)
+        # ranges = generate_ranges(
+        #     query_data.shape[0], SELECTIVITY_LOW, SELECTIVITY_HIGH, LABEL_MIN, LABEL_MAX)
+        train_labels = train_labels
+        ranges = ranges
         if USE_CACHE:
             np.save(labels_path, train_labels)
             np.save(ranges_path, ranges)
@@ -424,16 +451,18 @@ if __name__ == "__main__":
         data_naive, query_naive = get_naive(
             data_labels=train_labels,
             query_ranges=ranges,
-            label_min=LABEL_MIN,
-            label_max=LABEL_MAX,
-            smallest_specificity=SELECTIVITY_LOW,
+            label_min=min(train_labels),
+            label_max=max(train_labels),
+            smallest_specificity=min(
+                ranges[:, 1] - ranges[:, 0]) / max(train_labels),
         )
         data_bin, query_bin = get_dyadic_bucketing(
             data_labels=train_labels,
             query_ranges=ranges,
-            label_min=LABEL_MIN,
-            label_max=LABEL_MAX,
-            smallest_specificity=SELECTIVITY_LOW,
+            label_min=min(train_labels),
+            label_max=max(train_labels),
+            smallest_specificity=min(
+                ranges[:, 1] - ranges[:, 0]) / max(train_labels),
         )
         if USE_CACHE:
             np.save(naive_data_path, data_naive)
@@ -481,6 +510,9 @@ if __name__ == "__main__":
             np.save(gt_dst_path, gt_dists)
     gt_time = time.time() - gt_start
 
+    print(test_hybrid_knn[:2])
+    print(gt_idxs[:2])
+
     # 4) Build HNSW index (rwalks) using binary bucketing attributes
     idx_build_start = time.time()
     index = build_hnsw_index(
@@ -509,34 +541,35 @@ if __name__ == "__main__":
     print("recall@10 vs ef_search")
     print("--------------------------------")
     logs = []
-    for ef_search in range(10, 500, 20):
-        srch_start = time.time()
-        nn_idxs, nn_dists = search_hnsw_index(
-            index=index,
-            query_vectors=query_data,
-            query_attr=query_attr,
-            raw_query_ranges=ranges,
-            k=FINAL_K,
-            ef_search=ef_search,
-            prun_factor=RWALKS_PRUN_FACTOR,
-            num_threads=1,
-        )
-        # print(nn_idxs[0])
-        # print(gt_idxs[0])
-        search_time = time.time() - srch_start
-        qps = query_data.shape[0] / \
-            search_time if search_time > 0 else float('inf')
-        recall = recall_at_k(nn_idxs, gt_idxs)
-        print(f"ef_search={ef_search}, qps={qps:.2f}, recall={recall:.4f}")
-        logs.append({
-            "ef": ef_search,
-            "al": None,
-            "recall": recall,
-            "latency(ms)": search_time * 1000,
-            "QPS": qps,
-        })
+    for ef_search in range(10, 2000, 20):
+        for pron_factor in [-10.0, -0.01, 0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.1]:
+            srch_start = time.time()
+            nn_idxs, nn_dists = search_hnsw_index(
+                index=index,
+                query_vectors=query_data,
+                query_attr=query_attr,
+                raw_query_ranges=ranges,
+                k=FINAL_K,
+                ef_search=ef_search,
+                prun_factor=pron_factor,
+                num_threads=1,
+            )
+            # print(nn_idxs[0])
+            # print(gt_idxs[0])
+            search_time = time.time() - srch_start
+            qps = query_data.shape[0] / \
+                search_time if search_time > 0 else float('inf')
+            recall = recall_at_k(nn_idxs, gt_idxs)
+            print(f"ef_search={ef_search}, qps={qps:.2f}, recall={recall:.4f}")
+            logs.append({
+                "ef": ef_search,
+                "al": pron_factor,
+                "recall": recall,
+                "latency(ms)": search_time * 1000,
+                "QPS": qps,
+            })
     df = pd.DataFrame(logs)
     path = CACHE_DIR / \
-        f"range_exp_{enc_name}_pf_{RWALKS_PRUN_FACTOR}_efc_{HNSW_EF_CONSTRUCTION}_bucketing_{'binary' if USE_BINARY_BUCKETING else 'naive'}.csv"
+        f"range_exp_{enc_name}_pf_{RWALKS_PRUN_FACTOR}_efc_{HNSW_EF_CONSTRUCTION}_bucketing_{'binary' if USE_BINARY_BUCKETING else 'naive'}_max_pron_M_{HNSW_M}_sift25M.csv"
     df.to_csv(path, index=False)
     print(f"Results saved to {path}")

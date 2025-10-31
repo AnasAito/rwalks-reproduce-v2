@@ -395,11 +395,13 @@ public:
             //         std::cout << "Progress: " << (node_id + 1) << " iterations completed." << std::endl;
             //     }
             // }
-            std::cout << "D = " << 3 << std::endl;
+            int walk_length = 3;
+            int walk_count = 20;
+            float decay_factor = 1.0f;
+            std::cout << "walk_length = " << walk_length << ", walk_count = " << walk_count << ", decay_factor = " << decay_factor << std::endl;
             auto operation = [&](size_t node_id, size_t /*threadId*/)
             {
-                // appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f); // 5, 10, 1.0f
-                appr_alg->getAttrAggregate(node_id, 3, 10, 1.0f);
+                appr_alg->getAttrAggregate(node_id, walk_length, walk_count, decay_factor);
             };
             auto start_time = std::chrono::high_resolution_clock::now(); // Start time
             ParallelFor(0, cur_l, num_threads, operation);
