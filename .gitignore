@@ -29,3 +29,5 @@ acorn/build/
 venv/
 plots/
 *.txt
+acorn/build/
+

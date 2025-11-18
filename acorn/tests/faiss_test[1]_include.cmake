@@ -1,0 +1,5 @@
+if(EXISTS "/home/anas.aitaomar/rwalks-reproduce-v2/acorn/tests/faiss_test[1]_tests.cmake")
+  include("/home/anas.aitaomar/rwalks-reproduce-v2/acorn/tests/faiss_test[1]_tests.cmake")
+else()
+  add_test(faiss_test_NOT_BUILT faiss_test_NOT_BUILT)
+endif()

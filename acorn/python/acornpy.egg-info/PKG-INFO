@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: acornpy
+Version: 0.1.0
+Summary: Python bindings for ACORN (Faiss-based ANN with filtering)
+Author: ACORN
+Requires-Python: >=3.8
+Requires-Dist: numpy>=1.20
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

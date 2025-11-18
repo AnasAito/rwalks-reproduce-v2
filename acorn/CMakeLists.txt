@@ -76,8 +76,7 @@ if(NOT nlohmann_json_POPULATED)
     FetchContent_Populate(nlohmann_json)
     add_subdirectory(${nlohmann_json_SOURCE_DIR} ${nlohmann_json_BINARY_DIR})
 endif()
-
-target_include_directories(faiss PUBLIC ${nlohmann_json_SOURCE_DIR}/include)
+target_link_libraries(faiss PRIVATE nlohmann_json::nlohmann_json)
 
 find_package(ZLIB REQUIRED)
 target_link_libraries(faiss PUBLIC ${ZLIB_LIBRARIES})

@@ -939,6 +939,181 @@ namespace hnswlib
             return top_valid_only_candidates;
         }
 
+        template <bool has_deletions>
+        std::priority_queue<
+            std::pair<std::pair<dist_t, bool>, tableint>,
+            std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+            CompareByFirstBis>
+        searchBaseLayerFilter(tableint ep_id,
+                              const void *data_point,
+                              size_t ef,
+                              BaseFilterFunctor *isIdAllowed = nullptr,
+                              const void *data_point_attr = nullptr, // int mask[dim_att], dyadic nodes in heap order
+                              const bool collect_metrics = false) const
+        {
+            // ---------------- Visited init ----------------
+            VisitedList *vl = visited_list_pool_->getFreeVisitedList();
+            vl_type *visited_array = vl->mass;
+            vl_type visited_array_tag = vl->curV;
+
+            // ---------------- PQs ----------------
+            std::priority_queue<
+                std::pair<std::pair<dist_t, bool>, tableint>,
+                std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+                CompareByFirstBis>
+                top_valid_only_candidates; // returned (only items passing range filter)
+
+            std::priority_queue<
+                std::pair<std::pair<dist_t, bool>, tableint>,
+                std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+                CompareByFirstBis>
+                top_candidates; // mixed; we carry a 'valid' flag next to distance
+
+            std::priority_queue<
+                std::pair<std::pair<dist_t, bool>, tableint>,
+                std::vector<std::pair<std::pair<dist_t, bool>, tableint>>,
+                CompareByFirstBis>
+                candidate_set; // frontier; stores (-dist) so top() is best (min-heap emulation)
+
+            // ---------------- Query mask -> active indices (once) ----------------
+            const int *query_mask = (const int *)data_point_attr;
+            const int dim_att = *((int *)dist_attr_func_param_); // your stored attribute dimension
+
+            // Stack buffer (no heap); 32 is generous for dyadic covers (~few actives).
+            int active_idx[16];
+            const int k_active = extract_active_indices_stack(query_mask, dim_att, active_idx, 16);
+
+            // ---------------- Seed with entry point ----------------
+            char *ep_data = getDataByInternalId(ep_id);
+            dist_t dist = fstdistfunc_(data_point, ep_data, dist_func_param_);
+
+            dist_t lowerBound = dist;
+            const float ep_scalar = getScalarLabelByInternalId(ep_id);
+            top_candidates.emplace(std::make_pair(dist, (ep_scalar >= low && ep_scalar <= high)), ep_id);
+            candidate_set.emplace(std::make_pair(-dist, true), ep_id);
+            visited_array[ep_id] = visited_array_tag;
+
+            // ---------------- Metrics ----------------
+            int nhops = 0, point_attr_eval = 0, dist_calculations = 0;
+
+            // ---------------- Main loop ----------------
+            while (!candidate_set.empty())
+            {
+                auto current = candidate_set.top();
+
+                // Early exit if best possible candidate from frontier is already worse than LB and we have ef items
+                if ((-current.first.first) > lowerBound && top_candidates.size() == ef)
+                    break;
+
+                candidate_set.pop();
+                const tableint curr_id = current.second;
+
+                int *ll = (int *)get_linklist0(curr_id);
+                size_t degree = getListCount((linklistsizeint *)ll);
+                if (collect_metrics)
+                    nhops++;
+
+#ifdef USE_SSE
+                _mm_prefetch((char *)(visited_array + *(ll + 1)), _MM_HINT_T0);
+                _mm_prefetch((char *)(visited_array + *(ll + 1) + 64), _MM_HINT_T0);
+                _mm_prefetch(data_level0_memory_ + (*(ll + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+                _mm_prefetch(data_attr_agg_memory_ + (*(ll + 1)) * size_data_attr_agg_per_element_, _MM_HINT_T0);
+                _mm_prefetch((char *)(ll + 2), _MM_HINT_T0);
+#endif
+
+                for (size_t j = 1; j <= degree; j++)
+                {
+                    const int cand_id = *(ll + j);
+
+#ifdef USE_SSE
+                    _mm_prefetch((char *)(visited_array + *(ll + j + 1)), _MM_HINT_T0);
+                    _mm_prefetch(data_level0_memory_ + (*(ll + j + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+                    _mm_prefetch(data_attr_agg_memory_ + (*(ll + j + 1)) * size_data_attr_agg_per_element_, _MM_HINT_T0);
+#endif
+                    // visited: mark once, immediately
+                    if (visited_array[cand_id] == visited_array_tag)
+                        continue;
+                    visited_array[cand_id] = visited_array_tag;
+
+                    // optional external filter
+                    if (isIdAllowed && !(*isIdAllowed)(cand_id))
+                        continue;
+
+                    // --- cheap attribute gate first (if enabled) ---
+                    bool probe = true;
+                    float cand_attr_max = 0.0f;
+
+                    if (pron_factor_ != -1)
+                    {
+                        const float *candAttr = (const float *)getDataAttrAggByInternalId(cand_id);
+                        cand_attr_max = max_by_indices_f32_early_scalar(candAttr, active_idx, k_active, /*early_stop=*/5.0f);
+                        if (collect_metrics)
+                            point_attr_eval++;
+                        if (cand_attr_max < pron_factor_)
+                            continue; // prune early
+                    }
+
+                    // --- expensive vector distance only if passing the gate ---
+                    char *cand_data = getDataByInternalId(cand_id);
+                    dist_t d = fstdistfunc_(data_point, cand_data, dist_func_param_);
+                    // if (hybrid_factor_ > 0 && k_active > 0)
+                    // {
+                    //     const dist_t adj = (cand_attr_max > 5) ? (cand_attr_max - 5) : cand_attr_max;
+                    //     d -= hybrid_factor_ * adj;
+                    // }
+                    if (collect_metrics)
+                        dist_calculations++;
+
+                    if (top_candidates.size() < ef || lowerBound > d)
+                    {
+                        candidate_set.emplace(std::make_pair(-d, true), cand_id);
+#ifdef USE_SSE
+                        _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ + offsetLevel0_, _MM_HINT_T0);
+                        _mm_prefetch(data_attr_agg_memory_ + candidate_set.top().second * size_data_attr_agg_per_element_, _MM_HINT_T0);
+#endif
+                        const float cscalar = getScalarLabelByInternalId(cand_id);
+                        top_candidates.emplace(std::make_pair(d, true), cand_id);
+
+                        if (top_candidates.size() > ef)
+                        {
+
+                            auto poped_item = top_candidates.top(); // trim only; don't duplicate into valid-only queue here
+                            top_candidates.pop();
+                            if (poped_item.first.second)
+                            {
+                                top_valid_only_candidates.emplace(poped_item);
+                            }
+                        }
+                        if (!top_candidates.empty())
+                            lowerBound = top_candidates.top().first.first;
+                    }
+                }
+
+                if (collect_metrics)
+                {
+                    distance_logger.push_back(dist_calculations);
+                }
+            }
+
+            visited_list_pool_->releaseVisitedList(vl);
+
+            if (collect_metrics)
+            {
+                test_metrics.push_back(std::make_tuple(dist_calculations, point_attr_eval, nhops));
+                curr_metric++;
+            }
+
+            // -------- Build final valid-only queue once (filter by scalar range) --------
+            while (!top_candidates.empty())
+            {
+                auto t = top_candidates.top();
+                if (t.first.second)
+                    top_valid_only_candidates.emplace(t);
+                top_candidates.pop();
+            }
+            return top_valid_only_candidates;
+        }
+
         std::vector<tableint>
         getGraphWalk(tableint start_node, int walk_length) const
         {
@@ -2270,8 +2445,6 @@ namespace hnswlib
                         if (cand < 0 || cand > max_elements_)
                             throw std::runtime_error("cand error");
                         dist_t d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
-                        // dist_t distAttrAgg = fstdistattraggfunc_((void *)valid_indices, currObj1AttrAgg, (void *)&valid_indices_count);
-                        // d += hybrid_factor_ * distAttrAgg;
                         if (d < curdist)
                         {
                             curdist = d;
