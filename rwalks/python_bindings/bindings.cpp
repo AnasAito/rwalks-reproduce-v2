@@ -369,7 +369,7 @@ public:
             std::cout << "ATRB smoothing via random walks - parallel  " << num_threads << std::endl;
             // std::cout << "Compressing enabled -  " << compress_bits << " bits" << std::endl;
             hnswlib::tableint node_id;
-            // const int trackInterval = 100000;
+            const int trackInterval = 100000;
             // for (node_id = 0; node_id < cur_l; node_id++)
             // {
             //     appr_alg->getAttrAggregate(node_id, 10, 10, 1.0f);
@@ -378,14 +378,30 @@ public:
             //         std::cout << "Progress: " << (node_id + 1) << " iterations completed." << std::endl;
             //     }
             // }
-            std::cout << "D = " << 2 << std::endl;
-            auto operation = [&](size_t node_id, size_t /*threadId*/)
+            // std::cout << "D = " << 2 << std::endl;
+            // auto operation = [&](size_t node_id, size_t /*threadId*/)
+            // {
+            //     // appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f); // 5, 10, 1.0f
+            //     appr_alg->getAttrAggregate(node_id, 2, 10, 1.0f);
+            // };
+            // auto start_time = std::chrono::high_resolution_clock::now(); // Start time
+            // ParallelFor(0, cur_l, num_threads, operation);
+            // // --------- end parallel walks
+            // auto end_time = std::chrono::high_resolution_clock::now(); // End time
+            //                                                            // compute mean,max,min
+            //                                                            // Calculate time difference
+            // auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+            // auto duration_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
+            // // Print the results
+            // std::cout << "Time taken (RW): " << duration_ms << " ms (" << duration_sec << " seconds)" << std::endl;
+            std::cout << "D = " << 3 << std::endl;
+            auto operation_a = [&](size_t node_id, size_t /*threadId*/)
             {
                 // appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f); // 5, 10, 1.0f
-                appr_alg->getAttrAggregate(node_id, 2, 10, 1.0f);
+                appr_alg->getAttrAggregate(node_id, 3, 10, 1.0f);
             };
             auto start_time = std::chrono::high_resolution_clock::now(); // Start time
-            ParallelFor(0, cur_l, num_threads, operation);
+            ParallelFor(0, cur_l, num_threads, operation_a);
             // --------- end parallel walks
             auto end_time = std::chrono::high_resolution_clock::now(); // End time
                                                                        // compute mean,max,min
@@ -394,39 +410,23 @@ public:
             auto duration_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
             // Print the results
             std::cout << "Time taken (RW): " << duration_ms << " ms (" << duration_sec << " seconds)" << std::endl;
-            std::cout << "D = " << 3 << std::endl;
-            auto operation_a = [&](size_t node_id, size_t /*threadId*/)
-            {
-                // appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f); // 5, 10, 1.0f
-                appr_alg->getAttrAggregate(node_id, 3, 10, 1.0f);
-            };
-            start_time = std::chrono::high_resolution_clock::now(); // Start time
-            ParallelFor(0, cur_l, num_threads, operation_a);
-            // --------- end parallel walks
-            end_time = std::chrono::high_resolution_clock::now(); // End time
-                                                                  // compute mean,max,min
-                                                                  // Calculate time difference
-            duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-            duration_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
-            // Print the results
-            std::cout << "Time taken (RW): " << duration_ms << " ms (" << duration_sec << " seconds)" << std::endl;
-            std::cout << "D = " << 5 << std::endl;
-            auto operation_b = [&](size_t node_id, size_t /*threadId*/)
-            {
-                // appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f); // 5, 10, 1.0f
-                appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f);
-            };
-            start_time = std::chrono::high_resolution_clock::now(); // Start time
-            ParallelFor(0, cur_l, num_threads, operation_b);
-            // --------- end parallel walks
-            end_time = std::chrono::high_resolution_clock::now(); // End time
-                                                                  // compute mean,max,min
-                                                                  // Calculate time difference
-            duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-            duration_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
+            // std::cout << "D = " << 5 << std::endl;
+            // auto operation_b = [&](size_t node_id, size_t /*threadId*/)
+            // {
+            //     // appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f); // 5, 10, 1.0f
+            //     appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f);
+            // };
+            // start_time = std::chrono::high_resolution_clock::now(); // Start time
+            // ParallelFor(0, cur_l, num_threads, operation_b);
+            // // --------- end parallel walks
+            // end_time = std::chrono::high_resolution_clock::now(); // End time
+            //                                                       // compute mean,max,min
+            //                                                       // Calculate time difference
+            // duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+            // duration_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
 
-            // Print the results
-            std::cout << "Time taken (RW): " << duration_ms << " ms (" << duration_sec << " seconds)" << std::endl;
+            // // Print the results
+            // std::cout << "Time taken (RW): " << duration_ms << " ms (" << duration_sec << " seconds)" << std::endl;
 
             for (int i = 0; i < dim_attr; ++i)
             {
