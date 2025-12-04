@@ -49,8 +49,9 @@ target_link_libraries(demo_residual_quantizer PRIVATE faiss)
 # add_executable(benchmark EXCLUDE_FROM_ALL benchmark.cpp)
 # target_link_libraries(benchmark PRIVATE faiss)
 
-add_executable(utils EXCLUDE_FROM_ALL utils.cpp)
-target_link_libraries(utils PRIVATE faiss)
+# utils.cpp is included directly by test_acorn.cpp, not a standalone executable
+# add_executable(utils EXCLUDE_FROM_ALL utils.cpp)
+# target_link_libraries(utils PRIVATE faiss nlohmann_json::nlohmann_json)
 
 # add_executable(correlation EXCLUDE_FROM_ALL correlation.cpp)
 # target_link_libraries(correlation PRIVATE faiss)
@@ -105,4 +106,4 @@ target_link_libraries(utils PRIVATE faiss)
 # target_link_libraries(test_laion_arb_pred PRIVATE faiss)
 
 add_executable(test_acorn EXCLUDE_FROM_ALL test_acorn.cpp)
-target_link_libraries(test_acorn PRIVATE faiss)
+target_link_libraries(test_acorn PRIVATE faiss nlohmann_json::nlohmann_json)

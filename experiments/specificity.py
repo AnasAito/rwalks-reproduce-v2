@@ -14,11 +14,25 @@ import hnswlib
 from utils import load_dataset, compute_recall, compute_acorn_results
 import sys
 import os
+import multiprocessing
 from acorn_prep_data import create_acorn_data
 from dotenv import load_dotenv
 
 
 load_dotenv()
+
+# set OMP_NUM_THREADS to NUM_THREADS
+os.environ['OMP_NUM_THREADS'] = os.getenv('NUM_THREADS')
+
+print(f"PARAMS ")
+print(f"RWALKS_EF_CONSTRUCTION: {os.getenv('RWALKS_EF_CONSTRUCTION')}")
+print(f"RWALKS_M: {os.getenv('RWALKS_M')}")
+print(f"RWALKS_PRUN_FACTOR: {os.getenv('RWALKS_PRUN_FACTOR')}")
+print(f"ACORN_GAMMA: {os.getenv('ACORN_GAMMA')}")
+print(f"ACORN_M: {os.getenv('ACORN_M')}")
+print(f"ACORN_MB: {os.getenv('ACORN_MB')}")
+print(f"NUM_THREADS: {os.getenv('NUM_THREADS')}")
+print(f"OMP_NUM_THREADS: {os.getenv('OMP_NUM_THREADS')}")
 
 
 def parse_arguments():
@@ -36,7 +50,7 @@ def parse_arguments():
 def build_index(dataset, num_threads=None):
     """Build HNSW index with the given dataset."""
     if num_threads is None:
-        num_threads = int(os.getenv('NUM_THREADS', 48))
+        num_threads = int(os.getenv('NUM_THREADS', -1))
 
     print(f"Building index with {dataset.train_vectors.shape[0]} vectors...")
 
@@ -76,7 +90,7 @@ def run_experiments(dataset, index, search_mode, num_threads=None):
 
     # Set search mode
     if num_threads is None:
-        num_threads = int(os.getenv('NUM_THREADS', 48))
+        num_threads = int(os.getenv('NUM_THREADS', -1))
 
     index.set_search_mode(search_mode=search_modes[search_mode])
     index.set_pron_factor(float(os.getenv('RWALKS_PRUN_FACTOR', 0.0)))
@@ -203,25 +217,27 @@ def main():
                 args.data_src_path,
                 data_root_dir + "/acorn_data"
             )
-            #  run acorn on data_dst
+            #  run acorn directly using test_acorn executable
             import subprocess
 
-            # Use the parameterized shell script
-            # Assume this script is in a folder (e.g., 'experiments') that is a sibling to 'acorn'
+            # Get acorn directory path
             acorn_path = str(
                 (Path(__file__).parent.parent / "acorn").resolve())
             print(f"ACORN path: {acorn_path}")
-            script_path = acorn_path + "/run_acorn.sh"
+
+            # Prepare parameters
             num_vecs = str(data_meta["num_vecs"])
             gamma = "1" if "acorn-1" in args.search_mode else str(
                 os.getenv('ACORN_GAMMA', "10"))
             dataset_path = "acorn_data"
-            M = str(os.getenv('ACORN_M', "16"))
+            M = str(os.getenv('ACORN_M', "32"))
             M_beta = "16" if "acorn-1" in args.search_mode else str(
                 os.getenv('ACORN_MB', "32"))
 
+            # Call test_acorn directly (same as: cd acorn && ./build/demos/test_acorn ...)
+            test_acorn_path = acorn_path + "/build/demos/test_acorn"
             cmd = [
-                script_path,
+                test_acorn_path,
                 num_vecs,
                 gamma,
                 dataset_path,
@@ -229,12 +245,70 @@ def main():
                 M_beta
             ]
 
-            print(f"Running ACORN script: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=False, cwd=acorn_path)
-            print("ACORN run completed.")
+            # Get number of threads from environment, default to CPU count
+            num_threads = os.getenv('NUM_THREADS')
+            if num_threads is None or num_threads == '':
+                num_threads = str(multiprocessing.cpu_count())
+            else:
+                num_threads = str(num_threads)
+
+            # Set OMP_NUM_THREADS for ACORN (OpenMP uses this)
+            env = os.environ.copy()
+            env['OMP_NUM_THREADS'] = num_threads
+
+            print(f"Running ACORN: {' '.join(cmd)}")
+            print(f"Working directory: {acorn_path}")
+            print(f"OMP_NUM_THREADS: {num_threads}")
+
+            # Run with real-time output streaming
+            process = subprocess.Popen(
+                cmd,
+                cwd=acorn_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,  # Line buffered
+                universal_newlines=True,
+                env=env  # Pass environment with OMP_NUM_THREADS set
+            )
+
+            # Stream output in real-time
+            print("ACORN process started. Streaming output:")
+            output_lines = []
+            for line in iter(process.stdout.readline, ''):
+                if line:
+                    line_stripped = line.rstrip()
+                    output_lines.append(line_stripped)
+                    # Print all output for visibility
+                    print(f"  {line_stripped}")
+                    sys.stdout.flush()
+
+            # Wait for completion and check return code
+            return_code = process.wait()
+            if return_code != 0:
+                print(f"ERROR: ACORN failed with return code {return_code}")
+                if output_lines:
+                    print("\nLast 20 lines of output:")
+                    for line in output_lines[-20:]:
+                        print(f"  {line}")
+                sys.exit(1)
+
+            print("ACORN run completed successfully.")
+
+            # Wait a moment for file I/O to complete
+            import time
+            time.sleep(1)
+
+            # Verify output file exists before trying to read results
+            acorn_data_path = data_root_dir + "/acorn_data"
+            qps_file = acorn_data_path + "/all_qps.bin"
+            if not os.path.exists(qps_file):
+                print(f"ERROR: Expected output file not found: {qps_file}")
+                print("ACORN may have failed silently. Check output above for details.")
+                sys.exit(1)
+
             #  save results
-            results = compute_acorn_results(
-                data_root_dir + "/acorn_data")
+            results = compute_acorn_results(acorn_data_path)
             output_file = save_results(
                 results, data_hash, args.search_mode)
         else:

@@ -1,8 +1,24 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# run_acorn.sh - Parameterized version of test.sh
-# Usage: ./run_acorn.sh <N> <gamma> <dataset> <M> <M_beta>
+# run_acorn_macos.sh - macOS-only parameterized ACORN runner
+# Usage: ./run_acorn_macos.sh <N> <gamma> <dataset> <M> <M_beta>
+#
+# Example:
+#   ./run_acorn_macos.sh 1000000 1 sift50k 16 16
 
+set -euo pipefail
+
+############################################
+# 1. OS CHECK (macOS only)
+############################################
+if [[ "$(uname)" != "Darwin" ]]; then
+    echo "Error: This script is intended for macOS (Darwin) only."
+    exit 1
+fi
+
+############################################
+# 2. ARGUMENTS
+############################################
 if [ $# -ne 5 ]; then
     echo "Usage: $0 <N> <gamma> <dataset> <M> <M_beta>"
     echo "Example: $0 1000000 1 sift50k 16 16"
@@ -17,48 +33,94 @@ M_beta=$5
 
 export debugSearchFlag=0
 
-# Set OpenMP environment variables for macOS
-# export LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
-# export CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
-# export CXXFLAGS="-I/opt/homebrew/opt/libomp/include"
+############################################
+# 3. HOMEBREW & LIBOMP DETECTION
+############################################
+
+if ! command -v brew >/dev/null 2>&1; then
+    echo "Error: Homebrew not found. Please install Homebrew from https://brew.sh first."
+    exit 1
+fi
+
+BREW_PREFIX="$(brew --prefix)"
+
+# Detect libomp installation (required for OpenMP with Apple Clang)
+if [ -d "${BREW_PREFIX}/opt/libomp" ]; then
+    OMP_PREFIX="${BREW_PREFIX}/opt/libomp"
+else
+    echo "Error: libomp not found at ${BREW_PREFIX}/opt/libomp."
+    echo "Install it with: brew install libomp"
+    exit 1
+fi
+
+############################################
+# 4. OpenMP ENVIRONMENT VARIABLES (macOS)
+############################################
+
+export LDFLAGS="-L${OMP_PREFIX}/lib"
+export CPPFLAGS="-I${OMP_PREFIX}/include"
+export CXXFLAGS="-I${OMP_PREFIX}/include"
+
+############################################
+# 5. BUILD ACORN (macOS-specific CMake)
+############################################
 
 echo "Building ACORN with parameters: N=$N, gamma=$gamma, dataset=$dataset, M=$M, M_beta=$M_beta"
 
-# Build if not already built
 if [ ! -f "build/demos/test_acorn" ]; then
-    echo "Building ACORN binary..."
-    # cmake -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release \
-    #       -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include" \
-    #       -DOpenMP_C_LIB_NAMES="omp" \
-    #       -DOpenMP_C_LIBRARIES="/opt/homebrew/opt/libomp/lib/libomp.dylib" \
-    #       -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include" \
-    #       -DOpenMP_CXX_LIB_NAMES="omp" \
-    #       -DOpenMP_CXX_LIBRARIES="/opt/homebrew/opt/libomp/lib/libomp.dylib" \
-    #       -DOpenMP_omp_LIBRARY="/opt/homebrew/opt/libomp/lib/libomp.dylib" \
-    #       -DCMAKE_CXX_FLAGS="-I/opt/homebrew/opt/libomp/include" \
-    #       -B build
-    cmake -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -B build
+    echo "ACORN binary not found. Building..."
 
+    cmake \
+        -DFAISS_ENABLE_GPU=OFF \
+        -DFAISS_ENABLE_PYTHON=OFF \
+        -DBUILD_TESTING=ON \
+        -DBUILD_SHARED_LIBS=ON \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_SKIP_INSTALL_RULES=ON \
+        -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I${OMP_PREFIX}/include" \
+        -DOpenMP_C_LIB_NAMES="omp" \
+        -DOpenMP_C_LIBRARIES="${OMP_PREFIX}/lib/libomp.dylib" \
+        -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I${OMP_PREFIX}/include" \
+        -DOpenMP_CXX_LIB_NAMES="omp" \
+        -DOpenMP_CXX_LIBRARIES="${OMP_PREFIX}/lib/libomp.dylib" \
+        -DOpenMP_omp_LIBRARY="${OMP_PREFIX}/lib/libomp.dylib" \
+        -DCMAKE_CXX_FLAGS="-I${OMP_PREFIX}/include" \
+        -B build
+
+    # Build Faiss & ACORN targets
     make -C build -j faiss
-    make -C build utils
     make -C build test_acorn
 else
     echo "ACORN binary already exists, skipping build..."
 fi
 
-export OMP_NUM_THREADS=${NUM_THREADS:-48}
+############################################
+# 6. OPENMP THREADS
+############################################
+
+export OMP_NUM_THREADS="${NUM_THREADS:-48}"
 echo "ACORN THREADS: $OMP_NUM_THREADS"
 
-# Create output directory
-now=$(date +"%m-%d-%Y")
-parent_dir=${now}_${dataset}
-mkdir -p ${parent_dir}
-dir=${parent_dir}/MB${M_beta}
-mkdir -p ${dir}
+############################################
+# 7. OUTPUT DIRECTORY STRUCTURE
+############################################
+
+now="$(date +"%m-%d-%Y")"
+parent_dir="${now}_${dataset}"
+mkdir -p "${parent_dir}"
+
+dir="${parent_dir}/MB${M_beta}"
+mkdir -p "${dir}"
+
+summary_file="${dir}/summary_sift_n=${N}_gamma=${gamma}.txt"
+
+############################################
+# 8. RUN ACORN
+############################################
 
 echo "Running ACORN test..."
-TZ='America/Los_Angeles' date +"Start time: %H:%M" >> ${dir}/summary_sift_n=${N}_gamma=${gamma}.txt 2>&1
+TZ='America/Los_Angeles' date +"Start time: %H:%M" >> "${summary_file}" 2>&1
 
-./build/demos/test_acorn $N $gamma $dataset $M $M_beta >> ${dir}/summary_sift_n=${N}_gamma=${gamma}.txt 2>&1
+./build/demos/test_acorn "$N" "$gamma" "$dataset" "$M" "$M_beta" >> "${summary_file}" 2>&1
 
-echo "ACORN test completed. Results saved to: ${dir}/summary_sift_n=${N}_gamma=${gamma}.txt" 
+echo "ACORN test completed. Results saved to: ${summary_file}"
