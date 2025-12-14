@@ -142,8 +142,8 @@ namespace hnswlib
 
             sum_agg.resize(data_attr_size_, 0.0f);
             sum_sq_agg.resize(data_attr_size_, 0.0f);
-            max_agg.resize(data_attr_size_, -50.0f);
-            min_agg.resize(data_attr_size_, 50.0f);
+            max_agg.resize(data_attr_size_, 0.0f);
+            min_agg.resize(data_attr_size_, 0.0f);
 
             ef_construction_ = std::max(ef_construction, M_);
             ef_ = 10;

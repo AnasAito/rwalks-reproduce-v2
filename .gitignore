@@ -27,3 +27,7 @@ acorn/tests/gtest/
 acorn/faiss/python/swigfaiss_avx2.swig
 acorn/build/
 venv/
+
+*.txt
+*.pdf
+*h5

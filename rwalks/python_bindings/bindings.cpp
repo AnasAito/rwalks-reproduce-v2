@@ -301,7 +301,7 @@ public:
             appr_alg->getAttrAggregate(node_id, 50, 50, 0.9f);
         }
     }
-    void addItems(py::object input, py::object input_attr, py::object ids_ = py::none(), int num_threads = -1, bool replace_deleted = false)
+    void addItems(py::object input, py::object input_attr, py::object ids_ = py::none(), int num_threads = -1, bool replace_deleted = false, int attr_depth = 3, int attr_steps = 20, float attr_alpha = 1.0f)
     {
         // std::cout << "dim_attr" << std::endl;
         // std::cout << dim_attr << std::endl;
@@ -394,11 +394,11 @@ public:
             // auto duration_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
             // // Print the results
             // std::cout << "Time taken (RW): " << duration_ms << " ms (" << duration_sec << " seconds)" << std::endl;
-            std::cout << "D = " << 3 << std::endl;
+            std::cout << "D = " << attr_depth << std::endl;
             auto operation_a = [&](size_t node_id, size_t /*threadId*/)
             {
                 // appr_alg->getAttrAggregate(node_id, 5, 10, 1.0f); // 5, 10, 1.0f
-                appr_alg->getAttrAggregate(node_id, 3, 10, 1.0f);
+                appr_alg->getAttrAggregate(node_id, attr_depth, attr_steps, 1.0f);
             };
             auto start_time = std::chrono::high_resolution_clock::now(); // Start time
             ParallelFor(0, cur_l, num_threads, operation_a);
@@ -445,10 +445,14 @@ public:
                             appr_alg->min_agg[i] = _arr[i];
                     }
                 }
-                appr_alg->sum_agg[i] = appr_alg->sum_agg[i] / c_mean;
-                appr_alg->max_agg[i] -= appr_alg->sum_agg[i];
-                appr_alg->min_agg[i] -= appr_alg->sum_agg[i];
-            }
+                // Prevent division by zero which causes NaN values
+                if (c_mean > 0)
+                {
+                    appr_alg->sum_agg[i] = appr_alg->sum_agg[i] / c_mean;
+                    appr_alg->max_agg[i] -= appr_alg->sum_agg[i];
+                    appr_alg->min_agg[i] -= appr_alg->sum_agg[i];
+                }
+                        }
 
             // int ex = 0;
             for (node_id = 0; node_id < 20; node_id++)
@@ -1194,7 +1198,7 @@ public:
             norm_array[i] = data[i] * norm;
     }
 
-    void addItems(py::object input, py::object input_attr, py::object ids_ = py::none())
+    void addItems(py::object input, py::object input_attr, py::object ids_ = py::none(), int num_threads = -1, bool replace_deleted = false, int attr_depth = 3, int attr_steps = 20, float attr_alpha = 1.0f)
     {
         py::array_t<dist_t, py::array::c_style | py::array::forcecast> items(input);
         py::array_t<int, py::array::c_style | py::array::forcecast> items_attr(input_attr);
@@ -1354,7 +1358,10 @@ PYBIND11_PLUGIN(hnswlib)
              py::arg("data_attr"),
              py::arg("ids") = py::none(),
              py::arg("num_threads") = -1,
-             py::arg("replace_deleted") = false)
+             py::arg("replace_deleted") = false,
+             py::arg("attr_depth") = 3,
+             py::arg("attr_steps") = 20,
+             py::arg("attr_alpha") = 1.0f)
         .def("get_items", &Index<float, float>::getDataReturnList, py::arg("ids") = py::none())
         .def("get_items_attr", &Index<float>::getDataAttrReturnList, py::arg("ids") = py::none())
         .def("get_items_attr_agg", &Index<float>::getDataAttrAggReturnList, py::arg("ids") = py::none())
@@ -1422,7 +1429,7 @@ PYBIND11_PLUGIN(hnswlib)
              py::arg("k") = 1,
              py::arg("num_threads") = -1,
              py::arg("filter") = py::none())
-        .def("add_items", &BFIndex<float>::addItems, py::arg("data"), py::arg("data_attr"), py::arg("ids") = py::none())
+        .def("add_items", &BFIndex<float>::addItems, py::arg("data"), py::arg("data_attr"), py::arg("ids") = py::none(), py::arg("num_threads") = -1, py::arg("replace_deleted") = false, py::arg("attr_depth") = 3, py::arg("attr_steps") = 20, py::arg("attr_alpha") = 1.0f)
         .def("delete_vector", &BFIndex<float>::deleteVector, py::arg("label"))
         .def("save_index", &BFIndex<float>::saveIndex, py::arg("path_to_index"))
         .def("load_index", &BFIndex<float>::loadIndex, py::arg("path_to_index"), py::arg("max_elements") = 0)
