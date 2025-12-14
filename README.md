@@ -320,3 +320,18 @@ python experiments/unf_plot.py --dataset sift_1m
 - CSV files in `data/` directory with detailed results for each method
 - PNG plot comparing all methods: `data/qps_vs_recall_unf_sift_1m.png`
 
+
+## How to Run RWalks on Relational Datasets
+
+At indexing time, RWalks takes two inputs:
+
+- A vector array.
+- A binary metadata array, where each value (0 or 1) indicates whether a given attribute is present. This can be understood as a one-shot embedding of the raw metadata.
+
+The same structure applies to queries:
+
+- RWalks takes an array of data vectors and a corresponding binary array.
+- The binary array depends on the query type:
+For equality queries, a single attribute is active. For AND queries, multiple attributes are active.
+
+
