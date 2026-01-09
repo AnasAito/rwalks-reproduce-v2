@@ -10,6 +10,7 @@ This repository contains code to reproduce experimental results comparing differ
 - [Installation](#-installation)
 - [Running Experiments](#-running-experiments)
 - [Visualization](#-visualization)
+- [Unfiltered Search Experiments](#-unfiltered-search-experiments)
 - [Search Methods](#-search-methods)
 - [Configuration](#-configuration)
 
@@ -110,6 +111,8 @@ Each experiment will:
 5. **Measure performance** (queries per second, recall)
 6. **Save results** to `data/specificity_experiment_{dataset}_{method}.csv`
 
+
+
 ## 📊 Visualization
 
 ### Generate Performance Plots
@@ -120,17 +123,7 @@ After running experiments, visualize the results:
 python experiments/specificity_plot.py --data_src_path /path/to/your/data/sift_1m_old_dist.h5
 ```
 
-### Plot Features
 
-The visualization script will:
-
-- **Load all available results** from your experiments
-- **Generate QPS vs Recall plots** for each specificity level
-- **Show Pareto frontiers** comparing different methods
-- **Save plots** to `data/qps_vs_recall_pareto_{dataset}.png`
-You will get a plot similar to this:
-
-![Example Plot](data/qps_vs_recall_pareto_sift_1m_old_dist.png)
 
 ## 🔍 Search Methods
 
@@ -166,8 +159,179 @@ export ACORN_GAMMA=10
 export ACORN_M=16
 export ACORN_MB=32
 ```
+
+
+### RWalk Params
+
+#### Indexing Parameters
+
+Test the impact of different random walk indexing parameters (depth and walk count):
+
+```bash
+python experiments/rwalks-params.py \
+    --data_src_path /path/to/your/data/sift_1m_old_dist.h5 \
+    --depth_values 1,3,5 \
+    --walk_values 10,20,50
+```
+
+**Example**:
+```bash
+python experiments/rwalks-params.py \
+    --depth_values 1,3,5 \
+    --walk_values 10,20,50 \
+    --data_src_path /home/anas.aitaomar/rwalks-reproduce-v2/sift_1m_old_dist.h5
+```
+
+This will:
+- Test varying **depth** values (1, 3, 5) while keeping walks fixed at the default (10)
+- Test varying **walk count** values (10, 20, 50) while keeping depth fixed at the default (3)
+- Run each search 4 times and average QPS for stable measurements
+- Generate two plots: one for depth experiments, one for walk experiments
+- Save results to `plots/rwalks_params_experiment_{dataset}.csv`
+- Save plots to `plots/rwalks_depth_experiment_{dataset}.png` and `plots/rwalks_walks_experiment_{dataset}.png`
+
+#### Search Parameters + Ablation
+
+Test the impact of different pruning factor values during search:
+
+```bash
+python experiments/rwalks-search-params.py \
+    --data_src_path /path/to/your/data/sift_1m_old_dist.h5 \
+    --prun_factor_values -10,0.0,0.01,0.05
+```
+Note : a negative pron factor means that we are testing disabled prunning
+
+This will:
+- Test different **pruning factor** values (-10 for disabled, 0.0, 0.01, 0.05)
+- Use the default indexing parameters (depth=3, walks=10)
+- Generate a plot showing QPS-Recall curves for different pruning factors
+- Save results to `plots/rwalks_search_params_experiment_{dataset}.csv`
+- Save plot to `plots/rwalks_search_params_experiment_{dataset}.png`
+
+
 ### Hardware Requirements
 
 - Experiments with 1M dataset were tested on a machine with 16GB RAM
 - Experiments with 10M dataset were tested on a Linux machine with 128GB RAM
+
+
+## 🔎 Unfiltered Search Experiments
+
+This section describes how to run unfiltered search experiments (vector search without attribute filtering).
+
+### Step 1: Prepare Unfiltered Dataset
+
+First, create an unfiltered dataset from your original dataset:
+
+```bash
+python experiments/prep-unf-dataset.py \
+    --src /path/to/your/data/sift_1m_old_dist.h5 \
+    --dst /path/to/your/data/sift_1m_unf.h5 \
+    -k 100
+```
+
+**What this does:**
+- Creates a new HDF5 file with unfiltered attributes (10 columns: all zeros except last column is 1)
+- Recomputes ground truth neighbors using FAISS.
+
+**Parameters:**
+- `--src`: Path to source HDF5 file (your original dataset)
+- `--dst`: Path to destination HDF5 file (will be created)
+- `-k`: Number of nearest neighbors to compute (default: 100)
+- `--query-batch`: Query batch size for FAISS search (default: 1000)
+
+**Example:**
+```bash
+python experiments/prep-unf-dataset.py \
+    --src /data/anas.aitaomar/sift_1m_old_dist.h5 \
+    --dst /data/anas.aitaomar/sift_1m_unf.h5 \
+    -k 100
+```
+
+### Step 2: Run Unfiltered Search Experiments
+
+Run experiments for each method on the unfiltered dataset:
+
+```bash
+# RWalks
+python experiments/unf_search.py \
+    --data_src_path /path/to/your/data/sift_1m_unf.h5 \
+    --search_mode rwalks
+
+# HNSW Baseline
+python experiments/unf_search.py \
+    --data_src_path /path/to/your/data/sift_1m_unf.h5 \
+    --search_mode hnsw-inline
+
+# STF Method
+python experiments/unf_search.py \
+    --data_src_path /path/to/your/data/sift_1m_unf.h5 \
+    --search_mode stf
+
+# ACORN Methods
+python experiments/unf_search.py \
+    --data_src_path /path/to/your/data/sift_1m_unf.h5 \
+    --search_mode acorn-1
+
+python experiments/unf_search.py \
+    --data_src_path /path/to/your/data/sift_1m_unf.h5 \
+    --search_mode acorn-g
+```
+
+**What this does:**
+- Builds the search index for the chosen method
+- Tests various EF values 
+- Measures performance (queries per second, recall)
+- Saves results to `data/unf_search_experiment_{dataset}_unf_{method}.csv`
+
+### Step 3: Generate Performance Plot
+
+After running experiments for all methods, visualize the results:
+
+```bash
+python experiments/unf_plot.py --dataset sift_1m
+```
+
+
+
+
+### Complete Example Workflow
+
+Here's a complete workflow for running unfiltered search experiments on SIFT-1M:
+
+```bash
+# 1. Prepare unfiltered dataset
+python experiments/prep-unf-dataset.py \
+    --src /data/anas.aitaomar/sift_1m_old_dist.h5 \
+    --dst /data/anas.aitaomar/sift_1m_unf.h5
+
+# 2. Run experiments for each method
+python experiments/unf_search.py --data_src_path /data/anas.aitaomar/sift_1m_unf.h5 --search_mode rwalks
+python experiments/unf_search.py --data_src_path /data/anas.aitaomar/sift_1m_unf.h5 --search_mode hnsw-inline
+python experiments/unf_search.py --data_src_path /data/anas.aitaomar/sift_1m_unf.h5 --search_mode stf
+python experiments/unf_search.py --data_src_path /data/anas.aitaomar/sift_1m_unf.h5 --search_mode acorn-1
+python experiments/unf_search.py --data_src_path /data/anas.aitaomar/sift_1m_unf.h5 --search_mode acorn-g
+
+# 3. Generate plot
+python experiments/unf_plot.py --dataset sift_1m
+```
+
+**Output:**
+- CSV files in `data/` directory with detailed results for each method
+- PNG plot comparing all methods: `data/qps_vs_recall_unf_sift_1m.png`
+
+
+## How to Run RWalks on Relational Datasets
+
+At indexing time, RWalks takes two inputs:
+
+- A vector array.
+- A binary metadata array, where each value (0 or 1) indicates whether a given attribute is present. This can be understood as a one-shot embedding of the raw metadata.
+
+The same structure applies to queries:
+
+- RWalks takes an array of data vectors and a corresponding binary array.
+- The binary array depends on the query type:
+For equality queries, a single attribute is active. For AND queries, multiple attributes are active.
+
 

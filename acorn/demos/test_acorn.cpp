@@ -632,7 +632,13 @@ int main(int argc, char* argv[]) {
             std::string sift50k_dir = data_root + "/acorn_data";
             std::string filename =
                     sift50k_dir + "/query_" + *spec_id + ".fvecs";
-
+            FILE* test_file = fopen(filename.c_str(), "rb");
+            if (!test_file) {
+                std::cout << "File not found: " << filename
+                          << ". Skipping spec_id " << *spec_id << std::endl;
+                continue;
+            }
+            fclose(test_file);
             xq = fvecs_read(filename.c_str(), &d2, &nq);
             std::cout << " number of queries = " << nq << std::endl;
             std::cout << " spec_id = " << *spec_id << std::endl;

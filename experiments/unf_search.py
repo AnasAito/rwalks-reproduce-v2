@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Specificity experiment script that runs comprehensive tests across different specificities and EF values.
+Unfiltered search experiment script that runs tests on the full workload without specificity segmentation.
 
 Usage:
-    python specificity.py --data_src_path /data/anas.aitaomar/sift_1m_old_dist.h5 --search_mode rwalks
+    python unf_search.py --data_src_path /data/anas.aitaomar/unfiltered_dataset.h5 --search_mode rwalks
 """
 
 from pathlib import Path
@@ -15,8 +15,9 @@ from utils import load_dataset, compute_recall, compute_acorn_results
 import sys
 import os
 import multiprocessing
-from acorn_prep_data import create_acorn_data
+from acorn_prep_unf import create_acorn_data
 from dotenv import load_dotenv
+import shutil
 
 
 load_dotenv()
@@ -37,7 +38,8 @@ print(f"OMP_NUM_THREADS: {os.getenv('OMP_NUM_THREADS')}")
 
 def parse_arguments():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description='Run specificity experiments')
+    parser = argparse.ArgumentParser(
+        description='Run unfiltered search experiments')
     parser.add_argument('--search_mode', type=str, required=True,
                         choices=['rwalks', 'hnsw-inline',
                                  'stf', 'acorn-1', 'acorn-g'],
@@ -67,14 +69,15 @@ def build_index(dataset, num_threads=None):
     )
 
     index.set_num_threads(num_threads)
-    index.add_items(dataset.train_vectors, dataset.train_labels)
+    index.add_items(dataset.train_vectors, dataset.train_labels,
+                    attr_depth=3, attr_steps=20)
 
     print("Index built successfully!")
     return index
 
 
 def run_experiments(dataset, index, search_mode, num_threads=None):
-    """Run experiments across all specificities and EF values."""
+    """Run experiments on the full workload with different EF values."""
 
     # Configuration
     search_modes = {
@@ -83,7 +86,6 @@ def run_experiments(dataset, index, search_mode, num_threads=None):
         "stf": 3,
     }
 
-    specificities = [0.01, 0.05, 0.1, 0.2, 0.3, 0.5]
     ef_values = range(
         10, 500, 50) if search_mode != "hnsw-inline" else range(10, 50, 10)
     k = 10  # Number of neighbors to retrieve
@@ -93,68 +95,58 @@ def run_experiments(dataset, index, search_mode, num_threads=None):
         num_threads = int(os.getenv('NUM_THREADS', -1))
 
     index.set_search_mode(search_mode=search_modes[search_mode])
-    index.set_pron_factor(float(os.getenv('RWALKS_PRUN_FACTOR', 0.0)))
+    index.set_pron_factor(-10)
     index.set_num_threads(num_threads)
 
     results = []
 
     print(f"Running experiments with search mode: {search_mode}")
-    print(f"Testing specificities: {specificities}")
     print(f"Testing EF values: {ef_values}")
+    print(f"Full workload: {dataset.test_vectors.shape[0]} queries")
 
-    for specificity in specificities:
-        print(f"\nProcessing specificity: {specificity}")
+    # Use all queries (no specificity segmentation)
+    queries_vecs = dataset.test_vectors
+    queries_labels = dataset.test_labels
+    queries_neighbors = dataset.neighbors
 
-        # Get query range for this specificity
-        query_range = (
-            specificities.index(
-                specificity) * int(dataset.test_vectors.shape[0] / len(specificities)),
-            (specificities.index(specificity) + 1) *
-            int(dataset.test_vectors.shape[0] / len(specificities))
-        )
+    print(f"Number of queries: {queries_vecs.shape[0]}")
+    print(
+        f"Attribute shape (10 columns: all 0s except last column is 1): {queries_labels.shape}")
 
-        queries_vecs = dataset.test_vectors[query_range[0]:query_range[1], :]
-        queries_labels = dataset.test_labels[query_range[0]:query_range[1], :]
-        queries_neighbors = dataset.neighbors[query_range[0]:query_range[1], :]
+    for ef in ef_values:
+        print(f"  Testing EF: {ef}")
 
-        print(
-            f"  Query range: {query_range[0]}:{query_range[1]} ({queries_vecs.shape[0]} queries)")
+        # Set EF
+        index.set_ef(ef)
 
-        for ef in ef_values:
-            print(f"  Testing EF: {ef}")
+        # Run queries and measure time
+        t0 = time.time()
+        neighbors, distances = index.knn_query(
+            queries_vecs, queries_labels, k=k)
+        t1 = time.time()
 
-            # Set EF
-            index.set_ef(ef)
+        query_time = t1 - t0
+        qps = queries_vecs.shape[0] / query_time
 
-            # Run queries and measure time
-            t0 = time.time()
-            neighbors, distances = index.knn_query(
-                queries_vecs, queries_labels, k=k)
-            t1 = time.time()
+        # Compute recall
+        recall_start = time.time()
+        recall = compute_recall(neighbors, queries_neighbors)
+        recall_time = time.time() - recall_start
 
-            query_time = t1 - t0
-            qps = queries_vecs.shape[0] / query_time
+        # Store results
+        result = {
+            'ef': ef,
+            'query_time': query_time,
+            'qps': qps,
+            'recall': recall,
+            'recall_computation_time': recall_time,
+            'num_queries': queries_vecs.shape[0],
+            'k': k
+        }
 
-            # Compute recall
-            recall_start = time.time()
-            recall = compute_recall(neighbors, queries_neighbors)
-            recall_time = time.time() - recall_start
+        results.append(result)
 
-            # Store results
-            result = {
-                'specificity': specificity,
-                'ef': ef,
-                'query_time': query_time,
-                'qps': qps,
-                'recall': recall,
-                'recall_computation_time': recall_time,
-                'num_queries': queries_vecs.shape[0],
-                'k': k
-            }
-
-            results.append(result)
-
-            print(f"    QPS: {qps:.2f}, Recall: {recall:.4f}")
+        print(f"    QPS: {qps:.2f}, Recall: {recall:.4f}")
 
     return results
 
@@ -167,7 +159,7 @@ def save_results(results, data_hash, search_mode):
     data_dir.mkdir(exist_ok=True)
 
     # Create meaningful filename
-    filename = f"specificity_experiment_{data_hash}_{search_mode}.csv"
+    filename = f"unf_search_experiment_{data_hash}_{search_mode}.csv"
     filepath = data_dir / filename
 
     # Convert results to DataFrame and save
@@ -188,14 +180,20 @@ def save_results(results, data_hash, search_mode):
     print(
         f"  Recall Range: {df['recall'].min():.4f} - {df['recall'].max():.4f}")
 
-    # Print per-specificity summary
-    print("\nPer-Specificity Summary (best recall):")
-    specificity_summary = df.loc[df.groupby('specificity')['recall'].idxmax()]
-    for _, row in specificity_summary.iterrows():
-        print(
-            f"  Specificity {row['specificity']}: Recall {row['recall']:.4f} (EF={row['ef']}, QPS={row['qps']:.2f})")
+    # Print best recall configuration
+    print("\nBest Configuration:")
+    best_recall_idx = df['recall'].idxmax()
+    best_row = df.loc[best_recall_idx]
+    print(
+        f"  Recall {best_row['recall']:.4f} (EF={best_row['ef']}, QPS={best_row['qps']:.2f})")
 
     return filepath
+
+
+def empty_acorn_data_directory(acorn_data_path):
+    """Empty acorn data directory."""
+    if os.path.exists(acorn_data_path):
+        shutil.rmtree(acorn_data_path)
 
 
 def main():
@@ -203,7 +201,7 @@ def main():
     args = parse_arguments()
     data_hash = args.data_src_path.split(
         "/")[-1].split(".")[0]
-    print("Specificity Experiment Runner")
+    print("Unfiltered Search Experiment Runner")
     print("=" * 50)
     print(f"Dataset: {data_hash}")
     print(f"Search Mode: {args.search_mode}")
@@ -213,6 +211,8 @@ def main():
         if "acorn" in args.search_mode:
             #  prep data
             data_root_dir = str(Path(__file__).parent.parent / "data")
+            # empty acorn data directory
+            empty_acorn_data_directory(data_root_dir + "/acorn_data")
             data_meta = create_acorn_data(
                 args.data_src_path,
                 data_root_dir + "/acorn_data"
@@ -318,6 +318,8 @@ def main():
                 args.data_src_path)
             print(f"Dataset loaded: {dataset.train_vectors.shape[0]} training vectors, "
                   f"{dataset.test_vectors.shape[0]} test vectors")
+            print(
+                f"Attribute dimensions (10 columns: all 0s except last is 1): {dataset.train_labels.shape[1]}")
 
             # Build index
             index = build_index(dataset)
