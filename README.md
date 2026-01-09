@@ -1,337 +1,269 @@
-# RWalks Reproduce: Experimental Comparison of Vector Search Methods
 
 
-This repository contains code to reproduce experimental results comparing different ANN indices across various specificity levels (RWalks, HNSW-inline, STF, ACORN-1 and ACORN-G).
+# RWalks Reproduce
+Reproducibility package for **RWalks: Random Walks as Attribute Diffusers for Filtered Vector Search**.
+
+This repository reproduces the experimental comparison of filtered vector search methods across multiple filter specificity levels, and includes **end-to-end** scripts and a **fully runnable Kaggle notebook** (recommended) covering:
+- Filtered search specificity experiments (RWalks, HNSW-inline, STF, ACORN-1, ACORN-G)
+- Unfiltered (plain ANN) search experiments
+- RWalks indexing-parameter sweep (walk depth, number of walks)
+- RWalks search-parameter ablation (pruning factor)
+
+## Zero-config, end-to-end reproduction (Recommended: Kaggle)
+
+If you want to **run everything without local setup** (no dependency install, no manual dataset download/config), use the Kaggle notebook. It runs on a Kaggle machine with the dataset already available and contains **all experiments + plots** embedded directly after each experiment section.
+
+**Kaggle notebook (full reproducibility, view or run):**  
+https://www.kaggle.com/code/anasaitaomar/sigmod-25-ari-rwalks?scriptVersionId=286207306
+
+**Repository branch used by the notebook:** `full-reproduce`
+
+What you can do in Kaggle:
+- Run all experiments end-to-end (or re-run individual sections)
+- View generated recall–QPS plots immediately after each experiment block
+- Export/download the produced CSVs and plots from the notebook output
+
+## Contents
+- [Paper information](#paper-information)
+- [What’s included in this submission](#whats-included-in-this-submission)
+- [Quickstart (local)](#quickstart-local)
+- [Data download (local)](#data-download-local)
+- [Installation (local)](#installation-local)
+- [Reproducing the filtered specificity experiments](#reproducing-the-filtered-specificity-experiments)
+- [Unfiltered search experiments](#unfiltered-search-experiments)
+- [RWalks indexing-parameter sweep](#rwalks-indexing-parameter-sweep)
+- [RWalks search-parameter ablation](#rwalks-search-parameter-ablation)
+- [Visualization](#visualization)
+- [Using custom datasets](#using-custom-datasets)
+- [Configuration](#configuration)
+- [Hardware notes](#hardware-notes)
 
 
-## Table of Contents
-- [Paper Information](#-paper-information)
-- [Data Download](#-data-download)
-- [Installation](#-installation)
-- [Running Experiments](#-running-experiments)
-- [Visualization](#-visualization)
-- [Unfiltered Search Experiments](#-unfiltered-search-experiments)
-- [Search Methods](#-search-methods)
-- [Configuration](#-configuration)
+## Paper information
 
-## Paper Information
+**Title:** RWalks: Random Walks as Attribute Diffusers for Filtered Vector Search  
+**Authors:** Anas Ait Aomar, Karima Echihabi, Marco Arnaboldi, Ioannis Alagiannis, Damien Hilloulin, Manal Cherkaoui
 
-### Title
-RWalks: Random Walks as Attribute Diffusers for Filtered Vector Search
-### Authors
-Anas Ait Aomar, Karima Echihabi, Marco Arnaboldi, Ioannis Alagiannis, Damien Hilloulin, Manal Cherkaoui
-### Abstract
+**Abstract:**  
 Analytical tasks in various domains increasingly encode complex information as dense vector data (e.g., embeddings), often requiring filtered vector search (i.e., vector search with attribute filtering). This search is challenging due to the volume and dimensionality of the data, the number and variety of filters, and the difference in distribution and/or update frequency between vectors and filters. Besides, many real applications require answers in a few milliseconds with high recall on large collections. Graph-based methods are considered the best choice for such applications, despite a lack of theoretical guarantees on query accuracy. Existing solutions for filtered vector search are either: 1) ad-hoc, using existing techniques with no or minor modifications; or 2) hybrid, providing specialized indexing and/or search algorithms. We show that neither is satisfactory and propose RWalks, an index-agnostic graph-based filtered vector search method that efficiently supports both filtered and unfiltered vector search. We demonstrate its scalability and robustness against the state-of-the-art with an exhaustive experimental evaluation on four real datasets (up to 100 million vectors), using query workloads with filters of different types (unique/composite), and varied specificity (proportion of points that satisfy a filter). The results show that RWalks can perform filtered search up to 2x faster than the second-best competitor (ACORN), while building the index 76x faster and answering unfiltered search 13x faster.
 
-[Download paper ->](https://github.com/AnasAito/rwalks-reproduce-v2/blob/master/RWalks_paper_public.pdf)
+**Paper PDF:**  
+https://github.com/AnasAito/rwalks-reproduce-v2/blob/master/RWalks_paper_public.pdf
 
-## Data Download
+## What’s included in this submission
 
-Before running experiments, you need to download the required datasets:
+### Experiments and scripts
+- **Unfiltered search pipeline**
+  - Script to prepare an unfiltered dataset variant (and recompute ground truth)
+  - Script to run unfiltered search experiments across methods
+  - Script to generate unfiltered search plots
+- **RWalks indexing-parameter sweep**
+  - Vary *walk depth* and *number of walks*, log recall–QPS, generate curves
+- **RWalks search-parameter ablation**
+  - Sweep pruning factor (including “disabled pruning”), report performance impact
+- **Specificity experiments coverage**
+  - RWalks vs baselines in the specificity experiment.
 
-### Available Datasets
+### Documentation
+- README updated to clearly describe how to run all experiments (local + Kaggle)
+- Guidance on running experiments on custom datasets (format expectations)
 
-1. **SIFT-1M**: `sift_1m_old_dist.h5` 
-2. **YFCC-10M**: `yfcc10m_old_dist.h5`
+### Notebook update (Kaggle)
+The Kaggle notebook includes:
+- Unfiltered search: RWalks vs all baselines
+- RWalks indexing-parameter sweep (depth / walks)
+- RWalks search-parameter ablation (pruning factor)
+- Specificity experiment with all baselines
+- Dedicated plots shown immediately after each experiment section
 
-### Download Instructions
+## Quickstart (local)
 
-1. Download the datasets:
-   - **SIFT-1M**: [Download from MEGA](https://mega.nz/file/H1hnXDIK#i_F9chhKiLU3lABfyKXH22AKfK1cwX10k6pztu1jKv4)
-   - **YFCC-10M**: [Download from MEGA](https://mega.nz/file/TsIDhACT#xbiaR659J2ec3P4KubmbRvtLub09TcLsdr-Eu5bomb0)
-2. **Remember the full path** to your data files as you'll need it for running experiments.
-
-## 🛠 Installation
-
-### 1. Clone the Repository
+If you prefer running locally, use the branch that corresponds to the full reproducibility package:
 
 ```bash
-git clone https://github.com/AnasAito/rwalks-reproduce
-cd rwalks-reproduce
+git clone -b full-reproduce https://github.com/AnasAito/rwalks-reproduce-v2.git
+cd rwalks-reproduce-v2
 ```
 
-### 2. Create and Activate Python Virtual Environment
+### Data download (local)
+
+Available datasets
+	1.	SIFT-1M: sift_1m_old_dist.h5
+	2.	YFCC-10M: yfcc10m_old_dist.h5
+
+Download links
+	•	SIFT-1M (MEGA): https://mega.nz/file/H1hnXDIK#i_F9chhKiLU3lABfyKXH22AKfK1cwX10k6pztu1jKv4
+	•	YFCC-10M (MEGA): https://mega.nz/file/TsIDhACT#xbiaR659J2ec3P4KubmbRvtLub09TcLsdr-Eu5bomb0
+
+Keep the full path to your .h5 file(s). You will pass it via --data_src_path.
+
+### Installation (local)
+
+1) Create and activate a virtual environment
 
 ```bash
-# Create virtual environment
 python3 -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate 
+source venv/bin/activate
 ```
-
-### 3. Install Dependencies
-
+2) Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Verify Installation
+### Reproducing the filtered specificity experiments
 
-Test that everything is installed correctly:
+The main filtered evaluation runs queries across multiple specificity levels:
+0.01, 0.05, 0.1, 0.2, 0.3, 0.5
+
+Run a specificity experiment
 ```bash
-python -c "import hnswlib; print('RWalks installed successfully!')"
+python experiments/specificity.py \
+  --data_src_path /path/to/sift_1m_old_dist.h5 \
+  --search_mode <method>
+```
+Supported methods
+- RWalks (our method)
+- HNSW-inline
+- STF (Search-Then-Filter)
+- Acorn-1
+- Acorn-g
+
+Examples
+```bash
+python experiments/specificity.py --data_src_path /path/to/sift_1m_old_dist.h5 --search_mode rwalks
+python experiments/specificity.py --data_src_path /path/to/sift_1m_old_dist.h5 --search_mode hnsw-inline
+python experiments/specificity.py --data_src_path /path/to/sift_1m_old_dist.h5 --search_mode stf
+python experiments/specificity.py --data_src_path /path/to/sift_1m_old_dist.h5 --search_mode acorn-1
+python experiments/specificity.py --data_src_path /path/to/sift_1m_old_dist.h5 --search_mode acorn-g
+```
+Outputs
+
+Each run writes a CSV: 
+```bash
+data/specificity_experiment_<dataset>_<method>.csv
+```
+The CSV contains recall and throughput (QPS) measured across EF values and specificity levels.
+
+
+### Unfiltered search experiments
+
+This reproduces vector search without attribute filtering.
+
+Step 1: Prepare an unfiltered dataset
+```bash
+python experiments/prep-unf-dataset.py \
+  --src /path/to/sift_1m_old_dist.h5 \
+  --dst /path/to/sift_1m_unf.h5 \
+  -k 100
 ```
 
-## 🧪 Running Experiments
+What it does:
+- Produces a new .h5 suitable for unfiltered experiments
+- Recomputes ground truth neighbors using FAISS
 
-### Basic Usage
+Key parameters:
+- --src source HDF5
+- --dst output HDF5
+- -k number of ground-truth neighbors (default: 100)
+- --query-batch FAISS query batch size (default: 1000)
 
-Run experiments using the `specificity.py` script with your dataset and chosen search method:
-
+Step 2: Run unfiltered experiments
 ```bash
-python experiments/specificity.py --data_src_path /path/to/your/data/sift_1m_old_dist.h5 --search_mode <method>
+python experiments/unf_search.py --data_src_path /path/to/sift_1m_unf.h5 --search_mode rwalks
+python experiments/unf_search.py --data_src_path /path/to/sift_1m_unf.h5 --search_mode hnsw-inline
+python experiments/unf_search.py --data_src_path /path/to/sift_1m_unf.h5 --search_mode stf
+python experiments/unf_search.py --data_src_path /path/to/sift_1m_unf.h5 --search_mode acorn-1
+python experiments/unf_search.py --data_src_path /path/to/sift_1m_unf.h5 --search_mode acorn-g
+```
+Outputs:
+	•	data/unf_search_experiment_<dataset>_unf_<method>.csv
+
+Step 3: Plot unfiltered results
+
+python experiments/unf_plot.py --dataset sift_1m
+
+Output plot:
+```bash
+data/qps_vs_recall_unf_sift_1m.png
 ```
 
-### Methods supported
+### RWalks indexing-parameter sweep
 
+This experiment evaluates indexing-time parameters:
+- walk depth
+- number of walks
+
+Run:
 ```bash
-# Test with RWalks method
-python experiments/specificity.py --data_src_path /data/anas.aitaomar/sift_1m_old_dist.h5 --search_mode rwalks
-
-# Test with HNSW baseline
-python experiments/specificity.py --data_src_path /data/anas.aitaomar/sift_1m_old_dist.h5 --search_mode hnsw-inline
-
-# Test with STF method
-python experiments/specificity.py --data_src_path /data/anas.aitaomar/sift_1m_old_dist.h5 --search_mode stf
-
-# Test with ACORN methods
-python experiments/specificity.py --data_src_path /data/anas.aitaomar/sift_1m_old_dist.h5 --search_mode acorn-1
-python experiments/specificity.py --data_src_path /data/anas.aitaomar/sift_1m_old_dist.h5 --search_mode acorn-g
+python experiments/rwalks-params.py \
+  --data_src_path /path/to/sift_1m_old_dist.h5 \
+  --depth_values 1,3,5 \
+  --walk_values 10,20,50
 ```
-
-### What Happens During Experiments
-
-Each experiment will:
-
-1. **Load the dataset** from your specified `.h5` file
-2. **Build search indices** 
-3. **Run queries** across multiple specificity levels (0.01, 0.05, 0.1, 0.2, 0.3, 0.5)
-4. **Test various EF values** (10-500 for most methods, 10-50 for HNSW-Inline as it saturates)
-5. **Measure performance** (queries per second, recall)
-6. **Save results** to `data/specificity_experiment_{dataset}_{method}.csv`
+What it produces:
+- CSV: plots/rwalks_params_experiment_<dataset>.csv
+- Depth plot: plots/rwalks_depth_experiment_<dataset>.png
+- Walk plot: plots/rwalks_walks_experiment_<dataset>.png
 
 
+### RWalks search-parameter ablation
 
-## 📊 Visualization
+This experiment studies the pruning factor effect during search.
 
-### Generate Performance Plots
-
-After running experiments, visualize the results:
-
+Run:
 ```bash
-python experiments/specificity_plot.py --data_src_path /path/to/your/data/sift_1m_old_dist.h5
+python experiments/rwalks-search-params.py \
+  --data_src_path /path/to/sift_1m_old_dist.h5 \
+  --prun_factor_values -10,0.0,0.01,0.05
 ```
+Interpretation:
+- A negative pruning factor (e.g., -10) indicates pruning disabled.
+
+Outputs:
+- CSV: plots/rwalks_search_params_experiment_<dataset>.csv
+- Plot: plots/rwalks_search_params_experiment_<dataset>.png
 
 
+### Visualization
 
-## 🔍 Search Methods
-
-### Available Methods
-
-| Method | Description |
-|--------|-------------|
-| `rwalks` | Random Walks method (our approach) |
-| `hnsw-inline` | HNSW Baseline |
-| `stf` | Search then Filter Method |
-| `acorn-1` | ACORN (γ=1) |
-| `acorn-g` | ACORN (γ=10) |
-
-## 🔧 Configuration
-
-### Environment Variables
-
-You can customize experiments by setting environment variables.
-
-**Note**: Make sure to choose a thread count appropriate for your machine. 
-
+Filtered specificity plots:
 ```bash
-# Threading
+python experiments/specificity_plot.py --data_src_path /path/to/sift_1m_old_dist.h5
+```
+(Additional plotting scripts are generated per experiment section as listed above.)
+
+### Using custom datasets
+
+RWalks expects:
+- A vector array for the base dataset
+- A binary metadata array (0/1) per point indicating attribute presence
+- Query vectors and query metadata masks (1 for active attributes)
+
+### Configuration
+
+The experiments support environment variables for consistent configuration across runs.
+
+- Threading
+```bash
 export NUM_THREADS=32
-
-# RWalks (and baselines using HNSW) parameters
+```
+- RWalks (and baselines using HNSW) parameters
+```bash
 export RWALKS_EF_CONSTRUCTION=100
 export RWALKS_M=16
 export RWALKS_PRUN_FACTOR=0.0
+```
 
-# ACORN parameters
+- ACORN parameters
+```bash
 export ACORN_GAMMA=10
 export ACORN_M=16
 export ACORN_MB=32
 ```
 
+### Hardware notes
+- 1M-scale experiments were tested on a machine with 16GB RAM
+- 10M-scale experiments were tested on a Linux machine with 128GB RAM
 
-### RWalk Params
-
-#### Indexing Parameters
-
-Test the impact of different random walk indexing parameters (depth and walk count):
-
-```bash
-python experiments/rwalks-params.py \
-    --data_src_path /path/to/your/data/sift_1m_old_dist.h5 \
-    --depth_values 1,3,5 \
-    --walk_values 10,20,50
-```
-
-**Example**:
-```bash
-python experiments/rwalks-params.py \
-    --depth_values 1,3,5 \
-    --walk_values 10,20,50 \
-    --data_src_path /home/anas.aitaomar/rwalks-reproduce-v2/sift_1m_old_dist.h5
-```
-
-This will:
-- Test varying **depth** values (1, 3, 5) while keeping walks fixed at the default (10)
-- Test varying **walk count** values (10, 20, 50) while keeping depth fixed at the default (3)
-- Run each search 4 times and average QPS for stable measurements
-- Generate two plots: one for depth experiments, one for walk experiments
-- Save results to `plots/rwalks_params_experiment_{dataset}.csv`
-- Save plots to `plots/rwalks_depth_experiment_{dataset}.png` and `plots/rwalks_walks_experiment_{dataset}.png`
-
-#### Search Parameters + Ablation
-
-Test the impact of different pruning factor values during search:
-
-```bash
-python experiments/rwalks-search-params.py \
-    --data_src_path /path/to/your/data/sift_1m_old_dist.h5 \
-    --prun_factor_values -10,0.0,0.01,0.05
-```
-Note : a negative pron factor means that we are testing disabled prunning
-
-This will:
-- Test different **pruning factor** values (-10 for disabled, 0.0, 0.01, 0.05)
-- Use the default indexing parameters (depth=3, walks=10)
-- Generate a plot showing QPS-Recall curves for different pruning factors
-- Save results to `plots/rwalks_search_params_experiment_{dataset}.csv`
-- Save plot to `plots/rwalks_search_params_experiment_{dataset}.png`
-
-
-### Hardware Requirements
-
-- Experiments with 1M dataset were tested on a machine with 16GB RAM
-- Experiments with 10M dataset were tested on a Linux machine with 128GB RAM
-
-
-## 🔎 Unfiltered Search Experiments
-
-This section describes how to run unfiltered search experiments (vector search without attribute filtering).
-
-### Step 1: Prepare Unfiltered Dataset
-
-First, create an unfiltered dataset from your original dataset:
-
-```bash
-python experiments/prep-unf-dataset.py \
-    --src /path/to/your/data/sift_1m_old_dist.h5 \
-    --dst /path/to/your/data/sift_1m_unf.h5 \
-    -k 100
-```
-
-**What this does:**
-- Creates a new HDF5 file with unfiltered attributes (10 columns: all zeros except last column is 1)
-- Recomputes ground truth neighbors using FAISS.
-
-**Parameters:**
-- `--src`: Path to source HDF5 file (your original dataset)
-- `--dst`: Path to destination HDF5 file (will be created)
-- `-k`: Number of nearest neighbors to compute (default: 100)
-- `--query-batch`: Query batch size for FAISS search (default: 1000)
-
-**Example:**
-```bash
-python experiments/prep-unf-dataset.py \
-    --src /data/anas.aitaomar/sift_1m_old_dist.h5 \
-    --dst /data/anas.aitaomar/sift_1m_unf.h5 \
-    -k 100
-```
-
-### Step 2: Run Unfiltered Search Experiments
-
-Run experiments for each method on the unfiltered dataset:
-
-```bash
-# RWalks
-python experiments/unf_search.py \
-    --data_src_path /path/to/your/data/sift_1m_unf.h5 \
-    --search_mode rwalks
-
-# HNSW Baseline
-python experiments/unf_search.py \
-    --data_src_path /path/to/your/data/sift_1m_unf.h5 \
-    --search_mode hnsw-inline
-
-# STF Method
-python experiments/unf_search.py \
-    --data_src_path /path/to/your/data/sift_1m_unf.h5 \
-    --search_mode stf
-
-# ACORN Methods
-python experiments/unf_search.py \
-    --data_src_path /path/to/your/data/sift_1m_unf.h5 \
-    --search_mode acorn-1
-
-python experiments/unf_search.py \
-    --data_src_path /path/to/your/data/sift_1m_unf.h5 \
-    --search_mode acorn-g
-```
-
-**What this does:**
-- Builds the search index for the chosen method
-- Tests various EF values 
-- Measures performance (queries per second, recall)
-- Saves results to `data/unf_search_experiment_{dataset}_unf_{method}.csv`
-
-### Step 3: Generate Performance Plot
-
-After running experiments for all methods, visualize the results:
-
-```bash
-python experiments/unf_plot.py --dataset sift_1m
-```
-
-
-
-
-### Complete Example Workflow
-
-Here's a complete workflow for running unfiltered search experiments on SIFT-1M:
-
-```bash
-# 1. Prepare unfiltered dataset
-python experiments/prep-unf-dataset.py \
-    --src /data/anas.aitaomar/sift_1m_old_dist.h5 \
-    --dst /data/anas.aitaomar/sift_1m_unf.h5
-
-# 2. Run experiments for each method
-python experiments/unf_search.py --data_src_path /data/anas.aitaomar/sift_1m_unf.h5 --search_mode rwalks
-python experiments/unf_search.py --data_src_path /data/anas.aitaomar/sift_1m_unf.h5 --search_mode hnsw-inline
-python experiments/unf_search.py --data_src_path /data/anas.aitaomar/sift_1m_unf.h5 --search_mode stf
-python experiments/unf_search.py --data_src_path /data/anas.aitaomar/sift_1m_unf.h5 --search_mode acorn-1
-python experiments/unf_search.py --data_src_path /data/anas.aitaomar/sift_1m_unf.h5 --search_mode acorn-g
-
-# 3. Generate plot
-python experiments/unf_plot.py --dataset sift_1m
-```
-
-**Output:**
-- CSV files in `data/` directory with detailed results for each method
-- PNG plot comparing all methods: `data/qps_vs_recall_unf_sift_1m.png`
-
-
-## How to Run RWalks on Relational Datasets
-
-At indexing time, RWalks takes two inputs:
-
-- A vector array.
-- A binary metadata array, where each value (0 or 1) indicates whether a given attribute is present. This can be understood as a one-shot embedding of the raw metadata.
-
-The same structure applies to queries:
-
-- RWalks takes an array of data vectors and a corresponding binary array.
-- The binary array depends on the query type:
-For equality queries, a single attribute is active. For AND queries, multiple attributes are active.
 
 
